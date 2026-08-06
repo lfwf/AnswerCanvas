@@ -1,16 +1,41 @@
-import type { LayoutElement } from "@/features/layout/layout-types";
+import type { ComparisonLayoutElement, LayoutElement } from "@/features/layout/layout-types";
+import { countGraphemes } from "@/lib/text/graphemes";
 import { ArrowRenderer } from "./AnnotationLayer";
 import { FlowDiagram } from "./FlowDiagram";
 import { LineChart } from "./LineChart";
 import { QuestionHeader } from "./QuestionHeader";
-import { ListRenderer, TextRenderer, TitleRenderer } from "./TextRenderer";
+import { ListRenderer, revealText, TextRenderer, TitleRenderer } from "./TextRenderer";
+
+function ComparisonRenderer({ element, progress }: { element: ComparisonLayoutElement; progress: number }) {
+  const ordered = [element.payload.left.title, ...element.payload.left.items, element.payload.right.title, ...element.payload.right.items];
+  const total = ordered.reduce((sum, text) => sum + countGraphemes(text), 0);
+  const revealed = Math.floor(total * Math.min(1, Math.max(0, progress)));
+  let cursor = 0;
+  const next = (text: string) => {
+    const length = countGraphemes(text);
+    const localVisible = Math.min(length, Math.max(0, revealed - cursor));
+    cursor += length;
+    return revealText(text, length ? localVisible / length : 1);
+  };
+  const leftTitle = next(element.payload.left.title);
+  const leftItems = element.payload.left.items.map(next);
+  const rightTitle = next(element.payload.right.title);
+  const rightItems = element.payload.right.items.map(next);
+
+  return (
+    <section className="comparison handwritten-element" style={{ left: element.box.x, top: element.box.y, width: element.box.width, height: element.box.height }}>
+      <div><h3>{leftTitle}</h3>{leftItems.map((item, index) => <p key={`${element.id}-left-${index}`}>{item || "\u00a0"}</p>)}</div>
+      <div><h3>{rightTitle}</h3>{rightItems.map((item, index) => <p key={`${element.id}-right-${index}`}>{item || "\u00a0"}</p>)}</div>
+    </section>
+  );
+}
 
 export function renderLayoutElement(element: LayoutElement, progress: Record<string, number>) {
   if (element.kind === "question") return <QuestionHeader key={element.id} element={element} />;
   if (element.kind === "title") return <TitleRenderer key={element.id} element={element} progress={progress[`${element.id}:text`] ?? 0} />;
   if (element.kind === "text" || element.kind === "callout") return <TextRenderer key={element.id} element={element} progress={progress[`${element.id}:text`] ?? 0} targetProgress={progress} />;
   if (element.kind === "bullet-list") return <ListRenderer key={element.id} element={element} progress={progress[`${element.id}:text`] ?? 0} targetProgress={progress} />;
-  if (element.kind === "comparison") { const p = progress[`${element.id}:text`] ?? 0; return <section key={element.id} className="comparison handwritten-element" style={{ left: element.box.x, top: element.box.y, width: element.box.width, height: element.box.height, opacity: p }}><div><h3>{element.payload.left.title}</h3>{element.payload.left.items.map((item) => <p key={item}>{item}</p>)}</div><div><h3>{element.payload.right.title}</h3>{element.payload.right.items.map((item) => <p key={item}>{item}</p>)}</div></section>; }
+  if (element.kind === "comparison") return <ComparisonRenderer key={element.id} element={element} progress={progress[`${element.id}:text`] ?? 0} />;
   if (element.kind === "flow-diagram") return <FlowDiagram key={element.id} element={element} progress={progress} />;
   if (element.kind === "line-chart") return <LineChart key={element.id} element={element} progress={progress} />;
   if (element.kind === "arrow") return <ArrowRenderer key={element.id} element={element} progress={progress[`${element.id}:path`] ?? 0} />;

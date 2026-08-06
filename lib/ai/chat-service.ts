@@ -3,6 +3,7 @@ import { createDemoChatResult } from "@/features/notes/demo-note";
 import { createFallbackChatResult } from "@/features/notes/fallback-note";
 import { normalizeNote } from "@/features/notes/normalize-note";
 import { parseRawAIResult } from "@/features/notes/raw-note-schema";
+import { createNvdaAmdComparisonResult, isNvdaAmdComparison } from "@/lib/market/stock-comparison";
 import { splitGraphemes } from "@/lib/text/graphemes";
 import type { NoteGenerator } from "./openai-note-generator";
 
@@ -21,11 +22,25 @@ function mapTransportError(error: unknown): ChatServiceError {
   if (error instanceof DOMException && error.name === "TimeoutError") return new ChatServiceError("TIMEOUT", "AI 响应超时，请重试");
   return new ChatServiceError("UPSTREAM", "AI 服务暂时不可用，请重试");
 }
+
+type StockComparisonProvider = (question: string, signal: AbortSignal) => Promise<ChatResult>;
+
 export class ChatService {
-  constructor(private readonly options: { apiKey?: string; generator?: NoteGenerator; logger?: SafeLogger; idGenerator?: () => string }) {}
+  constructor(private readonly options: { apiKey?: string; generator?: NoteGenerator; logger?: SafeLogger; idGenerator?: () => string; stockComparisonProvider?: StockComparisonProvider }) {}
+
   async answer(question: string, signal: AbortSignal): Promise<ChatResult> {
-    if (!this.options.apiKey) return createDemoChatResult(question, this.options.idGenerator);
     const logger = this.options.logger ?? noopLogger;
+    if (isNvdaAmdComparison(question)) {
+      try {
+        const provider = this.options.stockComparisonProvider ?? ((input, requestSignal) => createNvdaAmdComparisonResult(input, requestSignal, { idGenerator: this.options.idGenerator }));
+        return await provider(question, signal);
+      } catch (error) {
+        logger.warn("live market comparison unavailable", { error: error instanceof Error ? error.name : "unknown" });
+        if (!this.options.apiKey) return createDemoChatResult(question, this.options.idGenerator);
+      }
+    }
+
+    if (!this.options.apiKey) return createDemoChatResult(question, this.options.idGenerator);
     const generator = this.options.generator ?? await this.createDefaultGenerator();
     let raw: unknown;
     try { raw = await generator.generate(question, signal); }
@@ -46,6 +61,7 @@ export class ChatService {
       }
     }
   }
+
   private async createDefaultGenerator(): Promise<NoteGenerator> {
     const { OpenAINoteGenerator } = await import("./openai-note-generator");
     return new OpenAINoteGenerator({ apiKey: this.options.apiKey!, model: process.env.OPENAI_MODEL });
