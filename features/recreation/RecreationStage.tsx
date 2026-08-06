@@ -1,8 +1,9 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { splitGraphemes } from "@/lib/text/graphemes";
 import { RecreationPlayer, type RecreationEvent } from "./recreation-player";
-import type { RecreationElement, RecreationScene, RecreationText } from "./recreation-types";
+import { drawableGraphemes, findGraphemeRange, mergeRectsByLine, type RecreationMarkSegment } from "./recreation-geometry";
+import type { RecreationElement, RecreationMark, RecreationScene, RecreationText } from "./recreation-types";
 import "@/features/paper/font.css";
 import "./recreation.css";
 
@@ -19,12 +20,28 @@ function useReducedMotion() {
   return reduced;
 }
 
+function useFontsReady() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    const timeout = new Promise<void>((resolve) => window.setTimeout(resolve, 3000));
+    const fonts = typeof document !== "undefined" && "fonts" in document ? document.fonts.ready.then(() => undefined, () => undefined) : Promise.resolve();
+    Promise.race([fonts, timeout]).then(() => { if (!cancelled) setReady(true); });
+    return () => { cancelled = true; };
+  }, []);
+  return ready;
+}
+
 function unitsFor(element: RecreationElement) {
-  return element.kind === "text" ? splitGraphemes(element.text).length : 1;
+  if (element.kind === "text") return drawableGraphemes(element.text).length;
+  if (element.kind === "mark") return Math.max(1, drawableGraphemes(element.match).length);
+  return 1;
 }
 
 function durationFor(element: RecreationElement) {
-  return element.kind === "text" ? Math.max(420, unitsFor(element) * 38) : 560;
+  if (element.kind === "text") return Math.max(260, unitsFor(element) * 58);
+  if (element.kind === "mark") return Math.max(300, unitsFor(element) * 32);
+  return 560;
 }
 
 function classForUnit(unit: string) {
@@ -32,8 +49,9 @@ function classForUnit(unit: string) {
 }
 
 function TextElement({ element, progress }: { element: RecreationText; progress: number }) {
-  const units = splitGraphemes(element.text);
-  const visible = Math.floor(units.length * Math.min(1, Math.max(0, progress)));
+  const total = drawableGraphemes(element.text).length;
+  const visible = Math.floor(total * Math.min(1, Math.max(0, progress)));
+  let graphemeIndex = 0;
   const style = {
     left: element.x,
     top: element.y,
@@ -47,18 +65,46 @@ function TextElement({ element, progress }: { element: RecreationText; progress:
     letterSpacing: element.style?.letterSpacing,
     transform: element.style?.rotate ? `rotate(${element.style.rotate}deg)` : undefined,
   } as React.CSSProperties;
-  return <div className="recreation-text" style={style} aria-label={element.text}>
-    {units.slice(0, visible).map((unit, index) => <span className={classForUnit(unit)} key={`${index}-${unit}`}>{unit === " " ? "\u00a0" : unit}</span>)}
-    {visible === 0 && "\u00a0"}
+  return <div className="recreation-text" data-text-id={element.id} style={style} aria-label={element.text}>
+    {element.text.split(/\r?\n/u).map((line, lineIndex) => <div className="recreation-line" key={`${element.id}:line:${lineIndex}`}>
+      {splitGraphemes(line).map((unit) => {
+        const index = graphemeIndex++;
+        const isVisible = index < visible;
+        return <span className={classForUnit(unit)} data-grapheme-index={index} key={`${element.id}:${index}`} style={{ visibility: isVisible ? "visible" : "hidden" }} aria-hidden="true">{unit === " " ? "\u00a0" : unit}</span>;
+      })}
+      {!line && <span aria-hidden="true">\u00a0</span>}
+    </div>)}
   </div>;
 }
 
-function SvgElements({ elements, progress }: { elements: RecreationElement[]; progress: Record<string, number> }) {
-  return <svg className="recreation-ink" viewBox="0 0 908 1280" aria-hidden="true">
+function segmentProgress(progress: number, index: number, count: number) {
+  return Math.min(1, Math.max(0, progress * count - index));
+}
+
+function MarkPaths({ mark, segments, progress }: { mark: RecreationMark; segments: RecreationMarkSegment[]; progress: number }) {
+  const padding = mark.padding ?? 3;
+  const wobble = mark.wobble ?? 1.5;
+  const color = mark.color ?? (mark.mark === "highlight" ? "rgba(245,202,73,.48)" : "#c62727");
+  return <>{segments.map((segment, index) => {
+    const value = segmentProgress(progress, index, segments.length);
+    const x1 = segment.x - padding;
+    const x2 = segment.x + segment.width + padding;
+    const centerY = segment.y + segment.height * 0.53;
+    if (mark.mark === "circle") {
+      return <ellipse key={`${mark.id}:${index}`} cx={segment.x + segment.width / 2} cy={segment.y + segment.height / 2} rx={segment.width / 2 + padding * 2} ry={segment.height / 2 + padding} fill="none" stroke={color} strokeWidth={mark.width ?? 1.8} strokeOpacity={(mark.opacity ?? 1) * value} pathLength="1" strokeDasharray="1" strokeDashoffset={1 - value} />;
+    }
+    const y = mark.mark === "underline" ? segment.y + segment.height + (mark.offset ?? 1) : mark.mark === "strike" ? centerY + (mark.offset ?? 0) : centerY + (mark.offset ?? 0);
+    return <path key={`${mark.id}:${index}`} d={`M ${x1} ${y} Q ${(x1 + x2) / 2} ${y + (index % 2 ? -wobble : wobble)} ${x2} ${y}`} fill="none" stroke={color} strokeWidth={mark.width ?? (mark.mark === "highlight" ? Math.max(8, segment.height * .55) : 1.8)} strokeOpacity={(mark.opacity ?? 1) * value} strokeLinecap="round" pathLength="1" strokeDasharray="1" strokeDashoffset={1 - value} />;
+  })}</>;
+}
+
+function SvgElements({ scene, elements, progress, markGeometry }: { scene: RecreationScene; elements: RecreationElement[]; progress: Record<string, number>; markGeometry: Record<string, RecreationMarkSegment[]> }) {
+  return <svg className="recreation-ink" viewBox={`0 0 ${scene.width} ${scene.height}`} aria-hidden="true">
     {elements.map((element) => {
       const value = progress[element.id] ?? 0;
-      if (element.kind === "stroke") return <path key={element.id} d={element.path} pathLength="1" fill="none" stroke={element.color ?? "#171717"} strokeWidth={element.width ?? 1.4} strokeOpacity={(element.opacity ?? 1) * value} strokeDasharray={element.dash ?? "none"} strokeLinecap="round" strokeLinejoin="round" style={{ strokeDasharray: element.dash ? undefined : 1, strokeDashoffset: element.dash ? undefined : 1 - value }} />;
-      if (element.kind === "box") return <rect key={element.id} x={element.x} y={element.y} width={element.width} height={element.height} rx={element.radius ?? 0} fill={value >= 1 ? (element.fill ?? "none") : "none"} stroke={element.stroke ?? "#171717"} strokeOpacity={value} strokeWidth={element.strokeWidth ?? 1.4} strokeDasharray={element.dash ?? undefined} pathLength="1" style={{ strokeDasharray: element.dash ? undefined : 1, strokeDashoffset: element.dash ? undefined : 1 - value }} />;
+      if (element.kind === "stroke") return <path key={element.id} d={element.path} pathLength="1" fill="none" stroke={element.color ?? "#171717"} strokeWidth={element.width ?? 1.4} strokeOpacity={(element.opacity ?? 1) * value} strokeDasharray={element.dash ?? "1"} strokeDashoffset={element.dash ? undefined : 1 - value} strokeLinecap="round" strokeLinejoin="round" />;
+      if (element.kind === "box") return <rect key={element.id} x={element.x} y={element.y} width={element.width} height={element.height} rx={element.radius ?? 0} fill={value >= 1 ? (element.fill ?? "none") : "none"} stroke={element.stroke ?? "#171717"} strokeOpacity={value} strokeWidth={element.strokeWidth ?? 1.4} strokeDasharray={element.dash ?? "1"} strokeDashoffset={element.dash ? undefined : 1 - value} pathLength="1" />;
+      if (element.kind === "mark") return <MarkPaths key={element.id} mark={element} segments={markGeometry[element.id] ?? []} progress={value} />;
       return null;
     })}
   </svg>;
@@ -66,13 +112,16 @@ function SvgElements({ elements, progress }: { elements: RecreationElement[]; pr
 
 export function RecreationStage({ scene }: { scene: RecreationScene }) {
   const reducedMotion = useReducedMotion();
+  const fontsReady = useFontsReady();
   const viewportRef = useRef<HTMLDivElement>(null);
+  const paperRef = useRef<HTMLElement>(null);
   const playerRef = useRef<RecreationPlayer | null>(null);
   const [progress, setProgress] = useState<Record<string, number>>({});
+  const [markGeometry, setMarkGeometry] = useState<Record<string, RecreationMarkSegment[]>>({});
   const [scale, setScale] = useState(0.7);
   const [status, setStatus] = useState<"idle" | "playing" | "paused" | "complete">("idle");
   const [speed, setSpeed] = useState(1);
-  const elements = useMemo(() => [...scene.elements].sort((a, b) => a.order - b.order), [scene.elements]);
+  const elements = useMemo(() => [...scene.elements].sort((a, b) => a.order - b.order || a.id.localeCompare(b.id)), [scene.elements]);
   const events = useMemo<RecreationEvent[]>(() => elements.map((element) => ({ id: element.id, durationMs: durationFor(element) })), [elements]);
 
   useEffect(() => {
@@ -83,12 +132,44 @@ export function RecreationStage({ scene }: { scene: RecreationScene }) {
     return () => observer.disconnect();
   }, [scene.width]);
 
+  useLayoutEffect(() => {
+    if (!fontsReady) return;
+    const paper = paperRef.current;
+    if (!paper) return;
+    const frame = requestAnimationFrame(() => {
+      const paperRect = paper.getBoundingClientRect();
+      const geometry: Record<string, RecreationMarkSegment[]> = {};
+      const textElements = new Map(elements.filter((element): element is RecreationText => element.kind === "text").map((element) => [element.id, element]));
+      for (const mark of elements.filter((element): element is RecreationMark => element.kind === "mark")) {
+        const textElement = textElements.get(mark.targetId);
+        const range = textElement ? findGraphemeRange(textElement.text, mark.match, mark.occurrence) : null;
+        const target = Array.from(paper.querySelectorAll<HTMLElement>("[data-text-id]")).find((node) => node.dataset.textId === mark.targetId);
+        if (!target || !range) { geometry[mark.id] = []; continue; }
+        const rects = Array.from(target.querySelectorAll<HTMLElement>("[data-grapheme-index]"))
+          .filter((node) => { const index = Number(node.dataset.graphemeIndex); return index >= range.start && index <= range.end; })
+          .map((node) => {
+            const rect = node.getBoundingClientRect();
+            const left = (rect.left - paperRect.left) / scale;
+            const top = (rect.top - paperRect.top) / scale;
+            const width = rect.width / scale;
+            const height = rect.height / scale;
+            return { left, top, right: left + width, bottom: top + height, width, height };
+          });
+        geometry[mark.id] = mergeRectsByLine(rects);
+      }
+      setMarkGeometry(geometry);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [elements, fontsReady, scale]);
+
   useEffect(() => {
+    if (!fontsReady) return;
     const player = new RecreationPlayer({
       events,
       onProgress: (event, value) => setProgress((current) => ({ ...current, [event.id]: value })),
       onComplete: () => setStatus("complete"),
     });
+    player.setSpeed(speed);
     playerRef.current = player;
     if (reducedMotion) {
       const complete: Record<string, number> = {};
@@ -101,7 +182,7 @@ export function RecreationStage({ scene }: { scene: RecreationScene }) {
       return () => { window.clearTimeout(startTimer); player.pause(); };
     }
     return () => player.pause();
-  }, [events, reducedMotion]);
+  }, [events, fontsReady, reducedMotion]);
 
   const togglePlay = useCallback(() => {
     const player = playerRef.current;
@@ -120,28 +201,17 @@ export function RecreationStage({ scene }: { scene: RecreationScene }) {
   const changeSpeed = useCallback((next: number) => { setSpeed(next); playerRef.current?.setSpeed(next); }, []);
 
   return <main className="recreation-shell">
-    <header className="recreation-brand" aria-label="AnswerCanvas">
-      <div className="brand-mark">AC</div>
-      <div><h1>AnswerCanvas</h1><p>Codex image recreation</p></div>
-    </header>
-    <aside className="recreation-handoff">
-      <strong>图片转手写</strong>
-      <span>把图片发给 Codex，说“转成手写”，它会更新当前复刻场景。</span>
-      <small>{scene.sourceName}</small>
-    </aside>
+    <header className="recreation-brand" aria-label="AnswerCanvas"><div className="brand-mark">AC</div><div><h1>AnswerCanvas</h1><p>Codex image recreation</p></div></header>
+    <aside className="recreation-handoff"><strong>图片转手写</strong><span>把图片发给 Codex，说“转成手写”，它会更新当前复刻场景。</span><small>{scene.sourceName}</small></aside>
     <section className="recreation-viewport" ref={viewportRef} aria-label="手写复刻画布">
       <div className="recreation-paper-shell" style={{ width: scene.width * scale, height: scene.height * scale }}>
-        <article className="recreation-paper" style={{ width: scene.width, height: scene.height, transform: `scale(${scale})` }}>
-          <SvgElements elements={elements} progress={progress} />
+        <article ref={paperRef} className="recreation-paper" style={{ width: scene.width, height: scene.height, transform: `scale(${scale})` }}>
+          <SvgElements scene={scene} elements={elements} progress={progress} markGeometry={markGeometry} />
           {elements.filter((element): element is RecreationText => element.kind === "text").map((element) => <TextElement key={element.id} element={element} progress={progress[element.id] ?? 0} />)}
         </article>
       </div>
     </section>
-    <div className="recreation-status">{status === "complete" ? "已完成" : status === "paused" ? "已暂停" : status === "playing" ? "正在书写" : "准备开始"}</div>
-    <nav className="recreation-toolbar" aria-label="播放控制">
-      <button type="button" onClick={togglePlay} disabled={status === "complete"}>{status === "playing" ? "暂停" : "继续"}</button>
-      <button type="button" onClick={replay}>重播</button>
-      <select aria-label="播放速度" value={speed} onChange={(event) => changeSpeed(Number(event.target.value))}><option value="0.5">0.5x</option><option value="1">1x</option><option value="1.5">1.5x</option><option value="2">2x</option></select>
-    </nav>
+    <div className="recreation-status">{!fontsReady ? "正在加载字体" : status === "complete" ? "已完成" : status === "paused" ? "已暂停" : status === "playing" ? "正在书写" : "准备开始"}</div>
+    <nav className="recreation-toolbar" aria-label="播放控制"><button type="button" onClick={togglePlay} disabled={status === "complete" || !fontsReady}>{status === "playing" ? "暂停" : "继续"}</button><button type="button" onClick={replay} disabled={!fontsReady}>重播</button><select aria-label="播放速度" value={speed} onChange={(event) => changeSpeed(Number(event.target.value))}><option value="0.5">0.5x</option><option value="1">1x</option><option value="1.5">1.5x</option><option value="2">2x</option></select></nav>
   </main>;
 }
