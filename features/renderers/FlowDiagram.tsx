@@ -1,0 +1,8 @@
+import type { FlowLayoutElement } from "@/features/layout/layout-types";
+export function FlowDiagram({ element, progress }: { element: FlowLayoutElement; progress: Record<string, number> }) {
+  const { nodes, edges } = element.payload; const pad = 70; const nodeWidth = 130; const usable = element.box.width - pad * 2; const positions = new Map(nodes.map((node, index) => [node.id, { x: pad + (nodes.length === 1 ? usable / 2 : index * usable / (nodes.length - 1)), y: element.box.height / 2 }]));
+  return <svg className="diagram-element handwritten-element" style={{ left: element.box.x, top: element.box.y, width: element.box.width, height: element.box.height }} viewBox={`0 0 ${element.box.width} ${element.box.height}`}>
+    {edges.map((edge, index) => { const from = positions.get(edge.from)!; const to = positions.get(edge.to)!; const p = progress[`${element.id}:edge:${index}`] ?? 0; return <g key={`${edge.from}-${edge.to}-${index}`}><path className="flow-edge" d={`M ${from.x + nodeWidth / 2} ${from.y} C ${from.x + 80} ${from.y - 30}, ${to.x - 80} ${to.y + 30}, ${to.x - nodeWidth / 2} ${to.y}`} pathLength="1" style={{ strokeDasharray: 1, strokeDashoffset: 1 - p }} />{edge.label && <text x={(from.x + to.x) / 2} y={from.y - 24}>{edge.label}</text>}</g>; })}
+    {nodes.map((node, index) => { const point = positions.get(node.id)!; const p = progress[`${element.id}:labels`] ?? 0; return <g key={node.id} style={{ opacity: p }}><rect className={index % 2 ? "flow-node green" : "flow-node blue"} x={point.x - nodeWidth / 2} y={point.y - 35} width={nodeWidth} height="70" rx="18" /><text x={point.x} y={point.y + 8} textAnchor="middle">{node.label}</text></g>; })}
+  </svg>;
+}
