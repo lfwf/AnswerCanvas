@@ -1,0 +1,90 @@
+.recreation-shell {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  background: #fff;
+  color: #202020;
+}
+
+.recreation-brand {
+  position: absolute;
+  z-index: 10;
+  left: 22px;
+  top: 18px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.recreation-brand h1 { margin: 0; font-size: 14px; font-weight: 650; letter-spacing: -0.01em; }
+.recreation-brand p { margin: 1px 0 0; color: #969691; font-size: 10px; }
+.brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid #e7e7e4; border-radius: 11px; background: #fff; color: #252525; font-size: 12px; font-weight: 800; box-shadow: 0 5px 18px rgba(0,0,0,.05); }
+
+.recreation-handoff {
+  position: absolute;
+  z-index: 10;
+  top: 18px;
+  right: 22px;
+  display: grid;
+  gap: 3px;
+  max-width: 300px;
+  padding: 10px 13px;
+  border: 1px solid #ececea;
+  border-radius: 14px;
+  background: rgba(255,255,255,.9);
+  box-shadow: 0 8px 24px rgba(0,0,0,.05);
+  font-size: 11px;
+}
+
+.recreation-handoff strong { color: #2f5c9b; font-size: 12px; }
+.recreation-handoff span { color: #777771; line-height: 1.4; }
+.recreation-handoff small { color: #aaa9a4; }
+
+.recreation-viewport {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  padding: 78px 18px 112px;
+  scroll-behavior: smooth;
+}
+
+.recreation-paper-shell { position: relative; margin: 0 auto; }
+.recreation-paper {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: hidden;
+  transform-origin: top left;
+  background-color: #faf9ee;
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 29px, rgba(84, 113, 139, .16) 30px, transparent 31px);
+  border: 1px solid rgba(30,30,30,.2);
+  box-shadow: 0 14px 40px rgba(35, 44, 50, .15);
+  font-family: "AnswerCanvasHandwriting", "Caveat", "STKaiti", "KaiTi", "Segoe Print", "Bradley Hand", cursive;
+}
+
+.recreation-ink { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.recreation-text { position: absolute; white-space: pre-wrap; overflow: visible; color: #171717; font-family: "AnswerCanvasHandwriting", "Caveat", "STKaiti", "KaiTi", "Segoe Print", "Bradley Hand", cursive; font-size: 17px; line-height: 28px; letter-spacing: .01em; }
+.recreation-char { display: inline-block; white-space: pre; transform-origin: 50% 78%; }
+.recreation-char.latin-handwritten { font-family: "Caveat", "Segoe Print", "Bradley Hand", cursive; font-weight: 500; letter-spacing: -.01em; }
+
+.recreation-status { position: absolute; z-index: 10; left: 138px; top: 92px; color: #92928d; font: 12px/1.2 system-ui, sans-serif; }
+.recreation-toolbar { position: absolute; z-index: 10; left: 278px; top: 80px; display: flex; align-items: center; gap: 3px; padding: 5px; border: 1px solid #ececea; border-radius: 999px; background: rgba(255,255,255,.92); box-shadow: 0 8px 24px rgba(0,0,0,.06); }
+.recreation-toolbar button,
+.recreation-toolbar select { border: 0; border-radius: 999px; padding: 6px 9px; background: transparent; color: #686864; font: 11px/1.2 system-ui, sans-serif; }
+.recreation-toolbar button:hover,
+.recreation-toolbar select:hover { background: #f2f2ef; color: #242422; }
+.recreation-toolbar button:disabled { opacity: .45; }
+
+@media (max-width: 720px) {
+  .recreation-brand { left: 12px; top: 10px; }
+  .recreation-brand p { display: none; }
+  .recreation-handoff { top: 10px; right: 12px; max-width: 205px; }
+  .recreation-viewport { padding: 116px 6px 96px; }
+  .recreation-status { left: 20px; top: 78px; }
+  .recreation-toolbar { left: auto; right: 12px; top: 66px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recreation-viewport { scroll-behavior: auto; }
+}

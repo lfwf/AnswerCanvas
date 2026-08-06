@@ -1,6 +1,6 @@
 # AnswerCanvas
 
-AnswerCanvas 是一个 Next.js 单体应用：用户在左侧提问，右侧把 AI 回答以 A4 手写笔记的形式逐步呈现。第一版采用 HTML 文字与原生 SVG 图形混合渲染，不依赖 AI 生成 HTML、SVG 或绝对坐标。
+AnswerCanvas 是一个 Next.js 单体应用：Codex 读取用户提供的参考图片后，把内容、位置、符号和书写顺序写入复刻场景；应用只负责在一张干净的纸上按单一书写队列逐字、逐符号、逐线条呈现。运行时不调用 AI，也不展示问答历史。
 
 ## 运行环境
 
@@ -12,19 +12,7 @@ npm install
 npm run dev
 ```
 
-未配置 API Key 时自动进入确定性的演示模式，输入“什么是 Skill？”即可体验标题、重点标记、列表、流程图和播放控制。
-
-OpenAI 模式：
-
-```bash
-cp .env.example .env.local
-# 在 .env.local 中设置：
-# OPENAI_API_KEY=...
-# OPENAI_MODEL=gpt-5-mini
-npm run dev
-```
-
-`OPENAI_API_KEY` 只在 Route Handler 的服务端模块读取，不会进入 API 响应或 localStorage。
+当前示例场景位于 `features/recreation/current-scene.ts`。使用方式：把图片发给 Codex，并说明“转成手写”；Codex 更新该场景后，刷新应用即可播放新的复刻结果。
 
 ## 验证
 
@@ -44,10 +32,10 @@ npm run security:scan
 - `features/renderers`：HTML/SVG 渲染器注册表。
 - `features/handwriting`：动画目标、时间轴和可控制播放器。
 - `features/paper`：纸张缩放、页面播放和跟随滚动。
+- `features/recreation`：图片复刻场景、单队列书写播放器和当前示例页面。
 - `features/chat`：纯 reducer、请求编排和聊天 UI。
 - `features/persistence`：版本化 localStorage 与容量控制。
-- `lib/ai`：服务端 OpenAI structured output、一次修复与安全降级。
 
 ## 已知边界
 
-当前文字动画是“逐字显现 + 笔尖跟随”，不是汉字或英文字形的真实逐笔画书写。流程线、图表线、圈选、下划线和荧光笔使用真实 SVG 路径动画；未来可在不改变领域协议和布局层的前提下接入笔顺数据。
+当前汉字动画是逐字显现，英文和数字是逐字符显现，Emoji、编号、圈线和框线作为单个书写单元；整个页面严格只有一个活动单元，不会从两个区域同时开始。静态图片无法提供原作者真实笔顺，因此复刻的是视觉内容、布局、层级和合理书写顺序，而不是原始笔顺录像。
