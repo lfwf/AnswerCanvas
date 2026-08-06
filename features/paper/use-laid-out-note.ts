@@ -13,7 +13,14 @@ export function useLaidOutNote(note: NoteDocument | null): LayoutDocument | null
     queueMicrotask(() => { if (active) setLayout(null); });
     if (!note) return () => { active = false; };
     const primary = createCanvasTextMeasurer();
-    void selectLockedTextMeasurer({ fonts: typeof document !== "undefined" ? document.fonts : undefined, primary, fallback: fallbackTextMeasurer }).then((measurer) => { if (active) setLayout(layoutNote(note, measurer)); });
+    const fonts = typeof document !== "undefined" ? document.fonts : undefined;
+    const handwritingReady = fonts?.load
+      ? fonts.load('400 29px "AnswerCanvasHandwriting"', "手写体").catch(() => [])
+      : Promise.resolve([]);
+    void Promise.all([
+      handwritingReady,
+      selectLockedTextMeasurer({ fonts, primary, fallback: fallbackTextMeasurer }),
+    ]).then(([, measurer]) => { if (active) setLayout(layoutNote(note, measurer)); });
     return () => { active = false; };
   }, [note]);
   return layout;

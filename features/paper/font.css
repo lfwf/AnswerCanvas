@@ -1,5 +1,13 @@
-@import url("https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600&family=Ma+Shan+Zheng&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600&display=swap");
+
+@font-face {
+  font-family: "AnswerCanvasHandwriting";
+  src: url("/fonts/handwriting.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+}
 
 .paper-page {
-  font-family: "Caveat", "Ma Shan Zheng", "STKaiti", "KaiTi", "Segoe Print", "Bradley Hand", cursive;
+  font-family: "AnswerCanvasHandwriting", "Caveat", "STKaiti", "KaiTi", "Segoe Print", "Bradley Hand", cursive;
 }

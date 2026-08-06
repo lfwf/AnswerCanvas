@@ -27,7 +27,24 @@ function wrap(text: string, maxWidth: number, fontSize: number, measurer: TextMe
     }
   }
   if (line) lines.push(line);
-  return lines.length ? lines : [""];
+  if (!lines.length) return [""];
+
+  // Keep very short trailing lines readable when a handwritten font has wider glyphs.
+  for (let index = 0; index < lines.length - 1; index += 1) {
+    let current = splitGraphemes(lines[index]);
+    let next = splitGraphemes(lines[index + 1]);
+    while (next.length < 3 && current.length > 1) {
+      const moved = current[current.length - 1];
+      const candidateCurrent = current.slice(0, -1).join("");
+      const candidateNext = `${moved}${next.join("")}`;
+      if (measurer.measure(candidateCurrent, fontSize) > maxWidth) break;
+      current = splitGraphemes(candidateCurrent);
+      next = splitGraphemes(candidateNext);
+      lines[index] = candidateCurrent;
+      lines[index + 1] = candidateNext;
+    }
+  }
+  return lines;
 }
 
 function ellipsize(lines: string[], maxLines: number): { lines: string[]; ellipsized: boolean } {

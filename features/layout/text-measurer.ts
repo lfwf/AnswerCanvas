@@ -1,6 +1,6 @@
 export interface TextMeasurer { measure(text: string, fontSize: number, fontFamily?: string): number; }
 
-const HANDWRITING_FONT_STACK = '"Caveat", "Ma Shan Zheng", "STKaiti", "KaiTi", "Segoe Print", "Bradley Hand", cursive';
+const HANDWRITING_FONT_STACK = '"AnswerCanvasHandwriting", "Caveat", "STKaiti", "KaiTi", "Segoe Print", "Bradley Hand", cursive';
 
 export function createCanvasTextMeasurer(): TextMeasurer {
   const canvas = typeof document === "undefined" ? null : document.createElement("canvas");
