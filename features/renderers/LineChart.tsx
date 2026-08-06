@@ -1,12 +1,14 @@
 import type { ChartLayoutElement } from "@/features/layout/layout-types";
 import { revealText } from "./TextRenderer";
 
-function formatValue(value: number) {
+function formatValue(value: number, percent: boolean) {
   const rounded = Math.abs(value) >= 100 ? value.toFixed(0) : value.toFixed(1).replace(/\.0$/u, "");
-  return `${value > 0 ? "+" : ""}${rounded}%`;
+  return `${value > 0 ? "+" : ""}${rounded}${percent ? "%" : ""}`;
 }
 
 export function LineChart({ element, progress }: { element: ChartLayoutElement; progress: Record<string, number> }) {
+  const semanticText = [element.payload.title ?? "", ...element.payload.series.map((series) => series.name)].join(" ");
+  const percentChart = /NVIDIA|AMD|股票|股价|涨幅|收益|回报|stock|performance|return/i.test(semanticText);
   const allPoints = element.payload.series.flatMap((series) => series.points);
   const min = Math.min(0, ...allPoints);
   const max = Math.max(0, ...allPoints);
@@ -27,7 +29,7 @@ export function LineChart({ element, progress }: { element: ChartLayoutElement; 
     <svg className="chart-element handwritten-element" style={{ left: element.box.x, top: element.box.y, width: element.box.width, height: element.box.height }} viewBox={`0 0 ${element.box.width} ${element.box.height}`}>
       {element.payload.title && <text className="chart-title" x={left} y="26">{revealText(element.payload.title, progress[`${element.id}:title`] ?? 0)}</text>}
       {ticks.map((tick, index) => {
-        const label = formatValue(tick.value);
+        const label = formatValue(tick.value, percentChart);
         return (
           <g key={tick.ratio}>
             <path className="chart-grid" d={`M ${left} ${tick.y} L ${right} ${tick.y}`} pathLength="1" style={{ ...drawStyle, opacity: axisProgress * 0.06 }} />
@@ -44,7 +46,7 @@ export function LineChart({ element, progress }: { element: ChartLayoutElement; 
         const lastPoint = series.points.at(-1) ?? 0;
         const lastX = xFor(series.points.length - 1, series.points.length);
         const lastY = yFor(lastPoint);
-        const label = `${series.name} ${formatValue(lastPoint)}`;
+        const label = `${series.name} ${formatValue(lastPoint, percentChart)}`;
         return (
           <g key={series.id}>
             <path className="chart-line-shadow" d={path} pathLength="1" style={{ strokeDasharray: 1, strokeDashoffset: 1 - pathProgress }} />
