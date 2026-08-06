@@ -9,17 +9,22 @@ export const A4_HEIGHT = 1123 as const;
 export const PAGE_MARGIN = 64;
 const CONTENT_WIDTH = A4_WIDTH - PAGE_MARGIN * 2;
 const PAGE_BOTTOM = A4_HEIGHT - PAGE_MARGIN;
-const BODY_FONT = 29;
-const BODY_LINE_HEIGHT = 46;
+const BODY_FONT = 27.5;
+const BODY_LINE_HEIGHT = 42;
 const GAP = 34;
 
-function wrap(text: string, maxWidth: number, fontSize: number, measurer: TextMeasurer): string[] {
+function wrap(text: string, maxWidth: number, fontSize: number, measurer: TextMeasurer, minLineLength = 0): string[] {
   const graphemes = splitGraphemes(text);
   const lines: string[] = [];
   let line = "";
   for (const grapheme of graphemes) {
     const candidate = line + grapheme;
     if (line && measurer.measure(candidate, fontSize) > maxWidth) {
+      if (/^[，。！？、；：）》】』」’”]/u.test(grapheme)) {
+        lines.push(candidate);
+        line = "";
+        continue;
+      }
       lines.push(line);
       line = grapheme;
     } else {
@@ -29,20 +34,44 @@ function wrap(text: string, maxWidth: number, fontSize: number, measurer: TextMe
   if (line) lines.push(line);
   if (!lines.length) return [""];
 
-  // Keep very short trailing lines readable when a handwritten font has wider glyphs.
-  for (let index = 0; index < lines.length - 1; index += 1) {
-    let current = splitGraphemes(lines[index]);
-    let next = splitGraphemes(lines[index + 1]);
-    while (next.length < 3 && current.length > 1) {
-      const moved = current[current.length - 1];
-      const candidateCurrent = current.slice(0, -1).join("");
-      const candidateNext = `${moved}${next.join("")}`;
-      if (measurer.measure(candidateCurrent, fontSize) > maxWidth) break;
-      current = splitGraphemes(candidateCurrent);
-      next = splitGraphemes(candidateNext);
-      lines[index] = candidateCurrent;
-      lines[index + 1] = candidateNext;
+  // Prefer keeping adjacent Chinese characters together across a line boundary.
+  for (let boundary = 0; boundary < lines.length - 1; boundary += 1) {
+    const current = splitGraphemes(lines[boundary]);
+    const next = splitGraphemes(lines[boundary + 1]);
+    const moved = current.at(-1);
+    if (current.length < 6 || !moved || !/\p{Script=Han}/u.test(moved) || !/^\p{Script=Han}/u.test(next[0] ?? "")) continue;
+    const candidateCurrent = current.slice(0, -1).join("");
+    const candidateNext = `${moved}${next.join("")}`;
+    if (measurer.measure(candidateNext, fontSize) <= maxWidth) {
+      lines[boundary] = candidateCurrent;
+      lines[boundary + 1] = candidateNext;
     }
+  }
+
+  if (minLineLength < 2) return lines;
+
+  // Avoid leaving a one- or two-character fragment when a handwritten font is wider.
+  let index = 0;
+  while (index < lines.length) {
+    const current = splitGraphemes(lines[index]);
+    if (index === 0 || current.length >= minLineLength) {
+      index += 1;
+      continue;
+    }
+    const next = lines[index + 1];
+    if (next && measurer.measure(`${lines[index]}${next}`, fontSize) <= maxWidth) {
+      lines[index + 1] = `${lines[index]}${next}`;
+      lines.splice(index, 1);
+      continue;
+    }
+    const previous = lines[index - 1];
+    if (previous && measurer.measure(`${previous}${lines[index]}`, fontSize) <= maxWidth) {
+      lines[index - 1] = `${previous}${lines[index]}`;
+      lines.splice(index, 1);
+      index = Math.max(0, index - 1);
+      continue;
+    }
+    index += 1;
   }
   return lines;
 }
@@ -112,7 +141,7 @@ export function layoutNote(note: NoteDocument, measurer: TextMeasurer): LayoutDo
   const addTextBlock = (block: Extract<NoteBlock, { type: "text" | "callout" }>) => {
     const horizontalInset = block.type === "callout" ? 30 : 0;
     const text = block.spans.map((span) => span.text).join("");
-    const allLines = wrap(text, CONTENT_WIDTH - horizontalInset, BODY_FONT, measurer);
+    const allLines = wrap(text, CONTENT_WIDTH - horizontalInset, BODY_FONT, measurer, 4);
     let cursor = 0;
     let part = 0;
     while (cursor < allLines.length) {
@@ -141,7 +170,7 @@ export function layoutNote(note: NoteDocument, measurer: TextMeasurer): LayoutDo
   const addListBlock = (block: Extract<NoteBlock, { type: "bullet-list" }>) => {
     let cursor = 0;
     let part = 0;
-    const items = block.items.map((item) => ({ ...item, lines: wrap(item.spans.map((span) => span.text).join(""), CONTENT_WIDTH - 42, BODY_FONT, measurer) }));
+    const items = block.items.map((item) => ({ ...item, lines: wrap(item.spans.map((span) => span.text).join(""), CONTENT_WIDTH - 42, BODY_FONT, measurer, 4) }));
     while (cursor < items.length) {
       let used = 0;
       const selected: typeof items = [];

@@ -98,14 +98,14 @@
 }
 
 .note-text,
-.note-list { font-size: 31px; line-height: 47px; }
+.note-list { font-size: 27.5px; line-height: 42px; }
 .reveal-mask { position: relative; z-index: 1; height: 100%; overflow: visible; }
-.handwritten-line { min-height: 47px; white-space: pre-wrap; }
+.handwritten-line { min-height: 42px; white-space: pre-wrap; }
 .handwritten-char { display: inline-block; white-space: pre; transform-origin: 50% 78%; will-change: transform; }
 .handwritten-char.latin-handwritten { font-family: "Caveat", "Segoe Print", "Bradley Hand", cursive; font-weight: 500; letter-spacing: -0.015em; }
 
 .note-list-item { display: flex; gap: 14px; margin-bottom: 10px; }
-.note-list-item > span { color: #171717; font-size: 30px; line-height: 44px; transform: rotate(-7deg); }
+.note-list-item > span { color: #171717; font-size: 27.5px; line-height: 40px; transform: rotate(-7deg); }
 
 .callout { padding: 0 4px 0 25px; border: 0; background: transparent; }
 .callout::before { content: ""; position: absolute; left: 5px; top: 4px; bottom: 9px; width: 3px; border-radius: 50%; background: #6ea9d9; transform: rotate(1deg); }
@@ -134,7 +134,7 @@
 .chart-axis { stroke-width: 2.2; }
 .chart-tick { stroke: #1b1b1b; stroke-width: 2; }
 .chart-grid { stroke: #1b1b1b; stroke-width: 1; opacity: 0.06; }
-.chart-line-shadow { stroke-width: 6; opacity: 0.07; }
+.chart-line-shadow { stroke-width: 6; opacity: 0.13; }
 .chart-line.blue { stroke: #397fbe; stroke-width: 3.8; }
 .chart-line.green { stroke: #27a152; stroke-width: 4; }
 .chart-series-label { font-size: 24px; font-weight: 500; }
@@ -177,7 +177,7 @@
   .pending-question-bubble { right: 14px; top: 18px; max-width: 78vw; font-size: 14px; }
   .note-title { font-size: 37px; }
   .note-text,
-  .note-list { font-size: 29px; }
+  .note-list { font-size: 27px; line-height: 41px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
