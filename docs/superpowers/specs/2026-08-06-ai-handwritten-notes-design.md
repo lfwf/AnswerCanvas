@@ -11,6 +11,7 @@
 ### 2.1 第一版包含
 
 - 左侧聊天、右侧 A4 笔记的桌面双栏界面。
+- 第一页顶部直接显示用户原始问题，随后播放 AI 回答的手写动画。
 - OpenAI API 生成回答和结构化笔记。
 - 未配置 API Key 时可使用的完整演示模式。
 - HTML 手写文字与 SVG 图形混合渲染。
@@ -307,6 +308,7 @@ OpenAI 只在服务端调用，采用严格 JSON Schema structured output。输�
 `NoteDocument` 必须且只能包含：
 
 - `id: string`；
+- `question: string`，1–4,000 grapheme，由服务端从已校验的用户请求注入，AI 无权生成或修改；
 - `title: string`，1–80 grapheme；
 - `theme: { paper: "warm-white", ink: "black", accent: "yellow-blue-green" }`；
 - `blocks: NoteBlock[]`，1–12 个；
@@ -327,7 +329,7 @@ OpenAI 只在服务端调用，采用严格 JSON Schema structured output。输�
 - `TextAnnotation`：必填唯一 id、`type: highlight | circle | underline | strike` 和 `target: { blockId, spanId }`；target 必须位于拥有该 annotations 数组的同一块内。
 - `ArrowAnnotation`：必填唯一 id、`type: arrow`、from、to；可选 1–60 grapheme label；端点含 blockId 和 `anchor: top | right | bottom | left | center`，from 与 to 必须引用两个不同的现存块。
 
-单文档所有用户可见内容合计最多 9,000 grapheme，TextAnnotation 最多 20 个，流程边合计最多 24 个。truncated 为 true 时，renderer 在纸张页脚显示固定的“内容已精简”；该页脚是 UI 状态，不占块、Span 或 9,000 grapheme 配额，因此不会导致 Schema 再次超限。
+单文档由 AI 生成的标题、块、图表标签和标注文字合计最多 9,000 grapheme；该预算不包含由服务端独立注入的 `question`，question 使用自己的 4,000-grapheme 上限。TextAnnotation 最多 20 个，流程边合计最多 24 个。truncated 为 true 时，renderer 在纸张页脚显示固定的“内容已精简”；该页脚是 UI 状态，不占块、Span 或 9,000 grapheme 配额，因此不会导致 Schema 再次超限。
 
 ### 15.2 ID 与引用规范化
 
@@ -347,3 +349,11 @@ OpenAI 只在服务端调用，采用严格 JSON Schema structured output。输�
 
 - 流程图完成 ID 规范化和无效边清理后，若剩余边数为零，则该流程块转换为同位置的 TextBlock：按原节点顺序生成“节点 A → 节点 B”文字摘要，使用新的规范块 ID，并删除原流程块的节点引用。若摘要触发文档文字上限，则设置 truncated 并按既有精简规则处理。最终进入客户端 Schema 的 flow-diagram 始终保有 1–12 条合法边。
 - 文档级箭头在布局完成后必须解析到同一 A4 页。端点跨页、端点块被降级或端点不存在时，布局器删除该箭头并生成诊断；箭头标签不承载独立事实，因此删除不需要额外文字替代。Renderer 永远不会收到跨页箭头。
+## 17. 用户问题显示（规范性）
+
+- API Route 完成 grapheme 长度校验后，将原始问题传给 ChatService。ChatService 调用 `normalizeNote(raw.note, validatedQuestion)`，由 normalizer 在最终 `noteDocumentSchema` 校验前注入 question；demo 和 fallback 工厂同样接收该已验证问题。OpenAI structured output 不包含 question 字段，若原始 AI 对象额外携带 question，该字段必须被丢弃，绝不能覆盖用户原文。
+- 布局器在第一页安全区顶部创建唯一的静态问题元素，再排列标题和回答块。问题只在第一页显示，不进入动画时间轴，也不显示跟随笔尖。
+- 问题区域使用较小的灰黑色文字、`Q：` 前缀和静态蓝色手绘下划线。笔记布局完成时整个问题区域立即可见，随后从 AI 回答标题开始播放手写动画。
+- 问题最多显示三行；超过三行时第三行以省略号结尾。`NoteDocument.question` 和聊天历史仍保存完整原文，显示精简不设置 `truncated`。
+- 组件与端到端测试必须验证：问题无需推进动画时钟即可显示、回答标题是首个动画事件、长问题限制为三行并显示省略号、第二页不重复问题、重播时问题始终保持可见。
+- OpenAI、demo 和 fallback 结果均须精确保留已验证问题；本地存储往返保存完整未省略原文。三行省略只存在于布局 payload，不得修改 `NoteDocument.question`。

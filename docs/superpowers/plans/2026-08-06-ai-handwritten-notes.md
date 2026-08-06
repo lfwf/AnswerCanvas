@@ -51,6 +51,7 @@ features/paper/
 features/renderers/
   renderer-registry.tsx                block-kind to renderer mapping
   TextRenderer.tsx                     title/text/list/callout/comparison HTML
+  QuestionHeader.tsx                   static first-page user question
   FlowDiagram.tsx                      native SVG flow graph
   LineChart.tsx                        native SVG hand-drawn chart
   AnnotationLayer.tsx                  SVG highlight/circle/line/arrow layer
@@ -168,7 +169,7 @@ Expected: PASS. All later schema and layout code must import this module; do not
 
 - [ ] **Step 3: Write failing schema tests**
 
-Cover every discriminator, exact theme literals, strict unknown-field rejection, grapheme limits, chart label/point cardinality, finite numbers, annotation ownership, same-block text targets, document-level arrows, total visible text, and required `truncated`.
+Cover every discriminator, exact theme literals, required 1–4,000-grapheme `question`, strict unknown-field rejection, grapheme limits, chart label/point cardinality, finite numbers, annotation ownership, same-block text targets, document-level arrows, total visible text, and required `truncated`.
 
 Representative assertion:
 
@@ -195,7 +196,7 @@ Expected: PASS.
 
 - [ ] **Step 7: Write a failing demo-note test**
 
-Assert that `createDemoChatResult("什么是 Skill？")` returns `mode: "demo"`, at least two text/list blocks, one highlight, and a valid three-node flow diagram. Assert identical input yields structurally identical content except a supplied ID generator.
+Assert that `createDemoChatResult("什么是 Skill？")` returns `mode: "demo"`, preserves the exact string as `note.question`, contains at least two text/list blocks, one highlight, and a valid three-node flow diagram. Assert identical input yields structurally identical content except a supplied ID generator.
 
 - [ ] **Step 8: Implement the deterministic demo factory**
 
@@ -240,11 +241,11 @@ Return diagnostics with the bounded raw document; do not call the final strict p
 
 Run after implementation: `npm test -- features/notes/raw-note-schema.test.ts`
 
-Expected: PASS. The ownership pipeline is explicit: `openai-note-generator` returns `unknown`; `raw-note-schema` parses one bounded `RawAIResult`; `normalize-note` repairs `raw.note`; `chat-service` combines `raw.answer` with the normalized note; `chatResultSchema` performs the final strict parse. If note normalization fails but `raw.answer` is valid, fallback `safeText` is `raw.answer`; if transport/raw parsing fails before a safe answer exists, use “暂时无法生成完整笔记，请重试”。
+Expected: PASS. The ownership pipeline is explicit: `openai-note-generator` returns `unknown`; `raw-note-schema` parses one bounded `RawAIResult` while discarding any AI-supplied question; `normalizeNote(raw.note, validatedQuestion)` repairs the note, injects the server-validated question, and performs the final `noteDocumentSchema` parse; `chat-service` combines `raw.answer` with that strict note and performs the final `chatResultSchema` parse. If note normalization fails but `raw.answer` is valid, fallback `safeText` is `raw.answer`; if transport/raw parsing fails before a safe answer exists, use “暂时无法生成完整笔记，请重试”。
 
 - [ ] **Step 3: Write failing normalization tests**
 
-Test deterministic canonical IDs, unique-reference rewriting, ambiguous duplicate-reference removal, invalid annotation removal, zero-edge flow conversion to text, unknown block conversion, cross-block text annotation rejection, and `truncated` propagation.
+Test deterministic canonical IDs, exact injection of the validated question before strict parsing, AI-supplied question discard, unique-reference rewriting, ambiguous duplicate-reference removal, invalid annotation removal, zero-edge flow conversion to text, unknown block conversion, cross-block text annotation rejection, and `truncated` propagation.
 
 - [ ] **Step 4: Verify RED**
 
@@ -254,7 +255,7 @@ Expected: FAIL because `normalizeNote` is missing.
 
 - [ ] **Step 5: Implement a two-pass normalizer**
 
-Pass one counts raw IDs and generates canonical positional IDs. Pass two resolves only unique mappings, drops ambiguous references with diagnostics, converts invalid graphs, enforces caps while reserving the truncation flag, and returns `{ note, diagnostics }` validated by `noteDocumentSchema`.
+Accept `validatedQuestion` as a required argument. Pass one counts raw IDs and generates canonical positional IDs. Pass two resolves only unique mappings, drops ambiguous references with diagnostics, converts invalid graphs, enforces the 9,000-grapheme AI-content cap excluding question, injects the exact validated question, and returns `{ note, diagnostics }` validated once by `noteDocumentSchema`.
 
 - [ ] **Step 6: Write the failing fallback test**
 
@@ -335,7 +336,7 @@ Expected: PASS.
 
 - [ ] **Step 5: Write failing layout tests with an injected fixed-width measurer**
 
-Assert full rectangle bounds, Chinese/English wrapping, at-least-two-lines rule, text/list splitting, comparison splitting, diagram scale-down, oversized diagram text degradation, truncation footer metadata, and no lost input lines across pages.
+Assert full rectangle bounds, Chinese/English wrapping, static question placement, three-line question ellipsis without mutating `NoteDocument.question`, no question repetition on page two, at-least-two-lines rule, text/list splitting, comparison splitting, diagram scale-down, oversized diagram text degradation, truncation footer metadata, and no lost input lines across pages.
 
 ```ts
 for (const element of result.pages.flatMap((page) => page.elements)) {
@@ -354,7 +355,7 @@ Expected: FAIL because `layoutNote` is missing.
 
 - [ ] **Step 7: Implement the layout contract and pagination**
 
-Use logical `794x1123`, margin 64, line height 38. Return typed layout payloads; never import React or renderer components. Resolve same-page document arrows after pagination and emit diagnostics for dropped cross-page arrows.
+Use logical `794x1123`, margin 64, line height 38. Create a unique static first-page question element before all blocks; wrap it to at most three lines with an ellipsis and never repeat it on later pages. Return typed layout payloads; never import React or renderer components. Resolve same-page document arrows after pagination and emit diagnostics for dropped cross-page arrows.
 
 - [ ] **Step 8: Run tests and commit**
 
@@ -401,7 +402,7 @@ Expected: PASS.
 
 - [ ] **Step 3: Write failing schedule tests**
 
-Assert ordering by page/element/phase/stable ID, 45ms per grapheme, path duration clamped to 300–2500ms, and 120ms pauses.
+Assert the static question element is excluded from events and the answer title is the first animation event. Also assert ordering by page/element/phase/stable ID, 45ms per grapheme, path duration clamped to 300–2500ms, and 120ms pauses.
 
 - [ ] **Step 4a: Verify timeline-builder RED**
 
@@ -443,6 +444,7 @@ git commit -m "feat: add handwritten animation timeline"
 **Files:**
 - Create: `features/renderers/renderer-registry.tsx`
 - Create: `features/renderers/TextRenderer.tsx`
+- Create: `features/renderers/QuestionHeader.tsx`
 - Create: `features/renderers/FlowDiagram.tsx`
 - Create: `features/renderers/LineChart.tsx`
 - Create: `features/renderers/AnnotationLayer.tsx`
@@ -453,6 +455,7 @@ git commit -m "feat: add handwritten animation timeline"
 - Create: `features/paper/paper.css`
 - Test: `features/renderers/renderer-registry.test.tsx`
 - Test: `features/renderers/TextRenderer.test.tsx`
+- Test: `features/renderers/QuestionHeader.test.tsx`
 - Test: `features/renderers/FlowDiagram.test.tsx`
 - Test: `features/renderers/LineChart.test.tsx`
 - Test: `features/renderers/AnnotationLayer.test.tsx`
@@ -484,7 +487,7 @@ Expected: PASS.
 
 - [ ] **Step 3: Write failing renderer component tests**
 
-Assert registry dispatch, semantic text, deterministic jitter CSS variables, SVG flow edges, chart paths, highlight/circle/underline/strike/arrow markup, hidden/revealed states, pen position, and unsupported-kind text fallback.
+Assert registry dispatch, semantic text, deterministic jitter CSS variables, immediately visible first-page `Q：` question styling and static blue underline, SVG flow edges, chart paths, highlight/circle/underline/strike/arrow markup, hidden/revealed states, pen position, and unsupported-kind text fallback.
 
 - [ ] **Step 4: Verify renderer RED**
 
@@ -498,7 +501,7 @@ Use no `dangerouslySetInnerHTML`. Each renderer registers its actual DOM/SVG nod
 
 - [ ] **Step 6: Write the failing renderer/timeline integration test**
 
-Mount a selected note through `PaperStage`, not a precomputed page. Include text, highlight, underline, strike, circle, arrow, flow edge, and chart path. Advance font and animation fake clocks; assert layout occurs once, every registered target progresses, `stroke-dashoffset` reaches zero, text reveals, the pen follows the active target, and completion emits exactly once. Resolve the real font late and assert the mounted note is not laid out again.
+Mount a selected note through `PaperStage`, not a precomputed page. Include the user question, text, highlight, underline, strike, circle, arrow, flow edge, and chart path. Before advancing the clock, assert the question is visible and absent from the target registry; then assert the answer title is the first active target, every animated target progresses, `stroke-dashoffset` reaches zero, text reveals, the pen follows the active target, and completion emits exactly once. Replay must leave the question visible. Resolve the real font late and assert the mounted note is not laid out again.
 
 - [ ] **Step 7: Verify integration RED**
 
@@ -532,7 +535,7 @@ git commit -m "feat: render animated handwritten paper"
 
 - [ ] **Step 1: Write failing persistence tests**
 
-Cover valid restore, corrupt JSON, unknown version, schema-invalid note, UUID collision first-wins policy, 20-turn eviction, UTF-8 `TextEncoder` 2MB calculation, too-large newest turn memory-only result, unavailable storage, and quota errors.
+Cover valid restore with the complete unellipsized `note.question`, corrupt JSON, unknown version, schema-invalid note, UUID collision first-wins policy, 20-turn eviction, UTF-8 `TextEncoder` 2MB calculation, too-large newest turn memory-only result, unavailable storage, and quota errors. Assert a save/load round trip preserves every grapheme of question exactly.
 
 - [ ] **Step 2a: Verify persistence RED**
 
@@ -584,7 +587,7 @@ git commit -m "feat: persist chat sessions safely"
 
 - [ ] **Step 1: Write failing ChatService policy tests**
 
-Inject the generator and logger. Assert no generator call without `OPENAI_API_KEY`, demo mode for arbitrary prompts, `RawAIResult.answer` plus normalized note becoming one strict `ChatResult`, valid raw answer supplying fallback `safeText`, generic fallback text when no safe answer exists, one repair attempt, timeout mapping, and no sentinel secret in returned or logged objects.
+Inject the generator and logger. Assert no generator call without `OPENAI_API_KEY`, demo mode for arbitrary prompts, OpenAI and fallback results preserving the exact validated request question, AI-supplied question being ignored, `RawAIResult.answer` plus normalized note becoming one strict `ChatResult`, valid raw answer supplying fallback `safeText`, generic fallback text when no safe answer exists, one repair attempt, timeout mapping, and no sentinel secret in returned or logged objects.
 
 - [ ] **Step 2: Verify RED**
 
@@ -598,7 +601,7 @@ Use fake timers and an injected SDK client. Assert the caller request signal abo
 
 - [ ] **Step 4: Implement the service and OpenAI adapter**
 
-Keep `import "server-only"` in the OpenAI module. Use the installed SDK's current structured-output API to request the full raw result, then pass `unknown -> RawAIResult -> normalize raw.note -> combine raw.answer -> chatResultSchema`. Compose the request AbortSignal with a 30-second timeout signal. The model name comes from `OPENAI_MODEL`, with a documented default.
+Keep `import "server-only"` in the OpenAI module. Use the installed SDK's current structured-output API to request the full raw result without a question field, then pass `unknown -> RawAIResult (discard AI question) -> normalizeNote(raw.note, validatedQuestion) -> noteDocumentSchema -> combine raw.answer -> chatResultSchema`. Compose the request AbortSignal with a 30-second timeout signal. The model name comes from `OPENAI_MODEL`, with a documented default.
 
 - [ ] **Step 5: Write failing route tests**
 
@@ -674,7 +677,7 @@ git commit -m "feat: connect chat and handwritten paper"
 
 - [ ] **Step 1: Write the failing desktop demo E2E test**
 
-At 1440x900, submit “什么是 Skill？”, assert the UI reports demo mode, the left answer appears, the right paper contains title/highlight/three-node flow, playback controls work, and reload restores history. The no-generator-call assertion remains in ChatService unit tests because a browser cannot observe an internal server-side SDK call.
+At 1440x900, submit “什么是 Skill？”, assert the UI reports demo mode, `Q：什么是 Skill？` is immediately visible before playback advances, and the right paper later contains title/highlight/three-node flow. Assert replay leaves the question visible and reload restores history. Add a long-question fixture that renders exactly three question lines with an ellipsis and a multi-page fixture that shows the question only on page one. The no-generator-call assertion remains in ChatService unit tests because a browser cannot observe an internal server-side SDK call.
 
 - [ ] **Step 2: Write the failing mobile and accessibility tests**
 
