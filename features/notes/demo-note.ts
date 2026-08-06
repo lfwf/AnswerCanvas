@@ -21,7 +21,87 @@ function createUniqueIdGenerator(idGenerator: IdGenerator): IdGenerator {
 export function createDemoChatResult(question: string, idGenerator: IdGenerator = defaultId): ChatResult {
   const nextId = createUniqueIdGenerator(idGenerator);
   const skillTopic = /(^|\s)skill|技能|能力包/i.test(question);
+  const chartTopic = /(nvidia|nvda|amd|英伟达|趋势图|折线图|图表|chart)/i.test(question);
   const noteId = nextId();
+
+  if (chartTopic) {
+    const textBlock = nextId();
+    const lead = nextId();
+    const green = nextId();
+    const middleA = nextId();
+    const blue = nextId();
+    const middleB = nextId();
+    const wrongScale = nextId();
+    const middleC = nextId();
+    const sharedScale = nextId();
+    const greenHighlight = nextId();
+    const blueHighlight = nextId();
+    const strike = nextId();
+    const circle = nextId();
+    const chartBlock = nextId();
+    const greenSeries = nextId();
+    const blueSeries = nextId();
+    const calloutBlock = nextId();
+    const calloutLead = nextId();
+    const calloutFocus = nextId();
+    const underline = nextId();
+
+    return chatResultSchema.parse({
+      answer: "当前是演示模式，曲线使用示意数据，只用于展示逐句书写、关键词标记、坐标轴和多条趋势线依次绘制的效果，不代表真实股票行情。",
+      mode: "demo",
+      note: {
+        id: noteId,
+        question,
+        title: "把两条趋势线放进同一坐标，差异才真正有意义",
+        theme: defaultNoteTheme,
+        blocks: [
+          {
+            type: "text",
+            id: textBlock,
+            spans: [
+              { id: lead, text: "演示数据里，" },
+              { id: green, text: "绿色曲线" },
+              { id: middleA, text: "增长更快，" },
+              { id: blue, text: "蓝色曲线" },
+              { id: middleB, text: "相对平缓。比较时不能" },
+              { id: wrongScale, text: "分别缩放" },
+              { id: middleC, text: "，而要使用" },
+              { id: sharedScale, text: "同一坐标尺度。", emphasis: "strong" },
+            ],
+            annotations: [
+              { id: greenHighlight, type: "highlight", target: { blockId: textBlock, spanId: green } },
+              { id: blueHighlight, type: "highlight", target: { blockId: textBlock, spanId: blue } },
+              { id: strike, type: "strike", target: { blockId: textBlock, spanId: wrongScale } },
+              { id: circle, type: "circle", target: { blockId: textBlock, spanId: sharedScale } },
+            ],
+          },
+          {
+            type: "line-chart",
+            id: chartBlock,
+            title: "示例趋势（非真实行情）",
+            labels: ["2022", "2023", "2024", "2025", "2026"],
+            series: [
+              { id: greenSeries, name: "NVIDIA demo", color: "green", points: [0, 8, 62, 148, 238] },
+              { id: blueSeries, name: "AMD demo", color: "blue", points: [0, 16, 7, 32, 72] },
+            ],
+          },
+          {
+            type: "callout",
+            id: calloutBlock,
+            tone: "warning",
+            spans: [
+              { id: calloutLead, text: "这些数值是" },
+              { id: calloutFocus, text: "动画演示数据，不代表真实行情。", emphasis: "strong" },
+            ],
+            annotations: [{ id: underline, type: "underline", target: { blockId: calloutBlock, spanId: calloutFocus } }],
+          },
+        ],
+        arrows: [],
+        truncated: false,
+      },
+    });
+  }
+
   const ids = Array.from({ length: 24 }, () => nextId());
   const [
     definitionBlock,
