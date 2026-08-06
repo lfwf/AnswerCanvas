@@ -25,25 +25,26 @@ const modeLabel = (mode?: ChatResult["mode"]) => mode === "demo" ? "Demo" : mode
 export function PaperStage({ note, question, mode, loading, error }: { note: NoteDocument | null; question?: string; mode?: ChatResult["mode"]; loading?: boolean; error?: string | null }) {
   const layout = useLaidOutNote(note);
   const viewportRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(0.78);
+  const [scale, setScale] = useState(0.9);
   const [currentPage, setCurrentPage] = useState(0);
   const reducedMotion = useReducedMotion();
+
   const followPage = useCallback((pageIndex: number) => {
     setCurrentPage(pageIndex);
     const viewport = viewportRef.current;
     const target = viewport?.querySelector<HTMLElement>(`[data-page-index="${pageIndex}"]`);
-    target?.scrollIntoView({ behavior: "smooth", block: "center" });
+    target?.scrollIntoView({ behavior: "smooth", block: "start" });
     viewport?.dispatchEvent(new CustomEvent("handwriting:page-follow", { detail: { pageIndex } }));
   }, []);
+
   const player = useHandwritingPlayer(layout, { reducedMotion, onPageFollow: followPage });
 
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(([entry]) => {
-      const widthScale = (entry.contentRect.width - 48) / 794;
-      const heightScale = (entry.contentRect.height - 54) / 1123;
-      setScale(Math.min(1, Math.max(0.36, Math.min(widthScale, heightScale))));
+      const widthScale = (entry.contentRect.width - 40) / 794;
+      setScale(Math.min(1.12, Math.max(0.42, widthScale)));
     });
     observer.observe(viewport);
     return () => observer.disconnect();
@@ -54,10 +55,12 @@ export function PaperStage({ note, question, mode, loading, error }: { note: Not
     {question && <div className="pending-question-bubble">{question}</div>}
     <div className="thinking-stroke"><span /><span /><span /></div>
   </section>;
+
   if (error) return <section className="paper-stage canvas-waiting">
     {question && <div className="pending-question-bubble">{question}</div>}
     <div className="canvas-error"><strong>生成失败</strong><span>{error}</span></div>
   </section>;
+
   if (!note || !layout) return <section className="paper-stage canvas-empty"><div><strong>Ask anything.</strong><p>答案会像草稿一样逐步写出来。</p></div></section>;
 
   return <section className="paper-stage">
@@ -69,7 +72,7 @@ export function PaperStage({ note, question, mode, loading, error }: { note: Not
       {layout.pages.length > 1 && <span>{currentPage + 1}/{layout.pages.length}</span>}
     </div>
     <div className="paper-viewport" ref={viewportRef} onWheel={player.suppressFollow} onTouchMove={player.suppressFollow}>
-      {layout.pages.map((page) => <PaperPage key={page.index} page={page} progress={player.progress} scale={scale} activeElementId={null} penVisible={false} />)}
+      {layout.pages.map((page) => <PaperPage key={page.index} page={page} progress={player.progress} scale={scale} />)}
     </div>
   </section>;
 }
