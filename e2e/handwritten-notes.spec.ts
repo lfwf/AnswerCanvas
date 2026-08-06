@@ -7,7 +7,8 @@ test.beforeEach(async ({ page }) => {
 
 test("demo question renders a static question and handwritten note", async ({ page }) => {
   await page.goto("/");
-  await page.getByLabel("输入你的问题").fill("什么是 Skill？");
+  await page.getByRole("button", { name: "什么是 Skill？", exact: true }).click();
+  await expect(page.getByLabel("输入你的问题")).toHaveValue("什么是 Skill？");
   await page.getByRole("button", { name: "生成手写笔记" }).click();
   await expect(page.getByText("演示模式")).toBeVisible();
   await expect(page.getByText("Q：什么是 Skill？")).toBeVisible();

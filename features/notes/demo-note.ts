@@ -3,10 +3,26 @@ import { chatResultSchema, defaultNoteTheme, type ChatResult } from "./note-sche
 export type IdGenerator = () => string;
 const defaultId: IdGenerator = () => crypto.randomUUID();
 
+function createUniqueIdGenerator(idGenerator: IdGenerator): IdGenerator {
+  const used = new Set<string>();
+  return () => {
+    const seed = idGenerator() || defaultId();
+    let candidate = seed.slice(0, 120);
+    let suffix = 2;
+    while (used.has(candidate)) {
+      const suffixText = `-${suffix++}`;
+      candidate = `${seed.slice(0, 120 - suffixText.length)}${suffixText}`;
+    }
+    used.add(candidate);
+    return candidate;
+  };
+}
+
 export function createDemoChatResult(question: string, idGenerator: IdGenerator = defaultId): ChatResult {
+  const nextId = createUniqueIdGenerator(idGenerator);
   const skillTopic = /(^|\s)skill|技能|能力包/i.test(question);
-  const noteId = idGenerator();
-  const ids = Array.from({ length: 18 }, () => idGenerator());
+  const noteId = nextId();
+  const ids = Array.from({ length: 18 }, () => nextId());
   const [definitionBlock, definitionSpan, pointsBlock, point1, point1Span, point2, point2Span, point3, point3Span, flowBlock, node1, node2, node3, highlight, calloutBlock, calloutSpan] = ids;
   const answer = skillTopic
     ? "Skill 是一组可复用的任务方法、约束和工具调用规则。它把一次性的提示词，变成可重复执行、可测试、可迭代的工作流程。"

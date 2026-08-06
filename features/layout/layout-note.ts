@@ -1,5 +1,5 @@
 import { splitGraphemes } from "@/lib/text/graphemes";
-import type { NoteBlock, NoteDocument, TextSpan } from "@/features/notes/note-schema";
+import type { NoteBlock, NoteDocument } from "@/features/notes/note-schema";
 import { createSeededRandom, seededRange, seedFromString } from "./seeded-random";
 import type { LayoutBox, LayoutDocument, LayoutElement, LayoutPage } from "./layout-types";
 import type { TextMeasurer } from "./text-measurer";

@@ -8,11 +8,27 @@ export function useHandwritingPlayer(layout: LayoutDocument | null, options?: { 
   const [progress, setProgress] = useState<Record<string, number>>({}); const [status, setStatus] = useState<"idle" | "playing" | "paused" | "complete">("idle"); const [speed, setSpeedState] = useState(1);
   const playerRef = useRef<TimelinePlayer | null>(null); const timeline = useMemo(() => layout ? buildTimeline(layout) : null, [layout]);
   useEffect(() => {
-    playerRef.current?.cancel(); setProgress({});
-    if (!timeline) { setStatus("idle"); return; }
-    if (options?.reducedMotion) { const complete: Record<string, number> = {}; for (const event of timeline.events) complete[event.targetId] = 1; setProgress(complete); setStatus("complete"); return; }
-    const player = new TimelinePlayer({ timeline, onProgress: (event, value) => setProgress((current) => current[event.targetId] === value ? current : { ...current, [event.targetId]: value }), onPageFollow: options?.onPageFollow, onComplete: () => setStatus("complete") });
-    playerRef.current = player; setStatus("playing"); player.play(); return () => player.cancel();
+    playerRef.current?.cancel();
+    playerRef.current = null;
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      setProgress({});
+      if (!timeline) { setStatus("idle"); return; }
+      if (options?.reducedMotion) {
+        const complete: Record<string, number> = {};
+        for (const event of timeline.events) complete[event.targetId] = 1;
+        setProgress(complete); setStatus("complete"); return;
+      }
+      const player = new TimelinePlayer({
+        timeline,
+        onProgress: (event, value) => { if (active) setProgress((current) => current[event.targetId] === value ? current : { ...current, [event.targetId]: value }); },
+        onPageFollow: options?.onPageFollow,
+        onComplete: () => { if (active) setStatus("complete"); },
+      });
+      playerRef.current = player; setStatus("playing"); player.play();
+    });
+    return () => { active = false; playerRef.current?.cancel(); playerRef.current = null; };
   }, [timeline, options?.reducedMotion, options?.onPageFollow]);
   const pause = useCallback(() => { playerRef.current?.pause(); setStatus("paused"); }, []);
   const resume = useCallback(() => { playerRef.current?.resume(); setStatus("playing"); }, []);

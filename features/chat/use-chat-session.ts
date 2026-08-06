@@ -1,13 +1,27 @@
 "use client";
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef } from "react";
 import { chatResultSchema } from "@/features/notes/note-schema";
 import { chatReducer, initialChatState } from "./chat-reducer";
 import { loadSession, saveSession } from "@/features/persistence/session-storage";
 
 export function useChatSession() {
-  const [state, dispatch] = useReducer(chatReducer, initialChatState); const [hydrated, setHydrated] = useState(false); const requestId = useRef(0); const controllers = useRef(new Map<string, AbortController>());
-  useEffect(() => { const loaded = loadSession(localStorage); dispatch({ type: "hydrate", state: loaded.state }); if (loaded.warning) dispatch({ type: "persistence-warning", message: loaded.warning }); setHydrated(true); return () => { for (const controller of controllers.current.values()) controller.abort(); }; }, []);
-  useEffect(() => { if (!hydrated) return; const saved = saveSession(localStorage, state); if (saved.warning && saved.warning !== state.persistenceWarning) dispatch({ type: "persistence-warning", message: saved.warning }); }, [hydrated, state.turns, state.selectedMessageId, state.persistenceWarning]);
+  const [state, dispatch] = useReducer(chatReducer, initialChatState);
+  const hydrated = useRef(false);
+  const requestId = useRef(0);
+  const controllers = useRef(new Map<string, AbortController>());
+  useEffect(() => {
+    const loaded = loadSession(localStorage);
+    dispatch({ type: "hydrate", state: loaded.state });
+    if (loaded.warning) dispatch({ type: "persistence-warning", message: loaded.warning });
+    hydrated.current = true;
+    const activeControllers = controllers.current;
+    return () => { for (const controller of activeControllers.values()) controller.abort(); };
+  }, []);
+  useEffect(() => {
+    if (!hydrated.current) return;
+    const saved = saveSession(localStorage, state);
+    if (saved.warning && saved.warning !== state.persistenceWarning) dispatch({ type: "persistence-warning", message: saved.warning });
+  }, [state]);
   const execute = useCallback(async (id: string, question: string, currentRequestId: number) => {
     controllers.current.get(id)?.abort(); const controller = new AbortController(); controllers.current.set(id, controller);
     try {

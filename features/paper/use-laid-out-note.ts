@@ -9,7 +9,9 @@ import { createCanvasTextMeasurer, fallbackTextMeasurer } from "@/features/layou
 export function useLaidOutNote(note: NoteDocument | null): LayoutDocument | null {
   const [layout, setLayout] = useState<LayoutDocument | null>(null);
   useEffect(() => {
-    let active = true; setLayout(null); if (!note) return () => { active = false; };
+    let active = true;
+    queueMicrotask(() => { if (active) setLayout(null); });
+    if (!note) return () => { active = false; };
     const primary = createCanvasTextMeasurer();
     void selectLockedTextMeasurer({ fonts: typeof document !== "undefined" ? document.fonts : undefined, primary, fallback: fallbackTextMeasurer }).then((measurer) => { if (active) setLayout(layoutNote(note, measurer)); });
     return () => { active = false; };
