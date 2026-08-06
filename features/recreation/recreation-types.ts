@@ -1,4 +1,4 @@
-export type RecreationElement = RecreationText | RecreationStroke | RecreationBox;
+export type RecreationElement = RecreationText | RecreationStroke | RecreationBox | RecreationMark;
 
 export interface RecreationTextStyle {
   color?: string;
@@ -46,6 +46,22 @@ export interface RecreationBox {
   strokeWidth?: number;
   dash?: string;
   radius?: number;
+}
+
+export interface RecreationMark {
+  id: string;
+  kind: "mark";
+  order: number;
+  targetId: string;
+  match: string;
+  occurrence?: number;
+  mark: "underline" | "strike" | "highlight" | "circle";
+  color?: string;
+  width?: number;
+  opacity?: number;
+  offset?: number;
+  padding?: number;
+  wobble?: number;
 }
 
 export interface RecreationScene {
