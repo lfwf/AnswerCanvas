@@ -1,0 +1,41 @@
+{
+  "name": "answer-canvas",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.12 <26",
+    "npm": ">=10.9"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "security:scan": "node scripts/assert-no-secret.mjs sk-sentinel-do-not-ship .next/static"
+  },
+  "dependencies": {
+    "next": "16.3.0",
+    "openai": "7.4.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "4.4.3",
+    "server-only": "0.0.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1",
+    "@testing-library/jest-dom": "7.0.0",
+    "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "14.6.3",
+    "@types/node": "26.1.2",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "eslint": "10.8.0",
+    "eslint-config-next": "16.3.0",
+    "jsdom": "30.0.1",
+    "typescript": "7.0.2",
+    "vitest": "4.1.10"
+  }
+}
