@@ -295,4 +295,50 @@ OpenAI 只在服务端调用，采用严格 JSON Schema structured output。输�
 - 浏览器 bundle、API 响应、本地存储和测试快照中都不得出现测试 API Key。
 - 大于等于 1024px 使用双栏，小于 1024px 使用上下布局；1440x900 与 390x844 端到端测试无页面级横向溢出。
 - 单元测试覆盖引用完整性、grapheme、字体超时、超大块降级、存储损坏/quota、假时钟播放控制、未知块转换。
-- 组件及端到端测试覆盖快速连续提交与迟到响应、超时、一次修复成功、修复失败降级、页面跟随和 reduced-motion。
+- 组件及端到端测试覆盖快速连续提交与迟到响应、超时、一次修复成功、修复失败降级、页面跟随和 reduced-motion。
+## 15. Schema 与断言细化（规范性）
+
+本节覆盖 14.1 中仍不够精确的字段描述。
+
+### 15.1 最终领域结构
+
+`ChatResult` 必须包含 `answer: string`、`note: NoteDocument` 和 `mode: openai | demo | fallback`。answer 为 1–6,000 grapheme。
+
+`NoteDocument` 必须且只能包含：
+
+- `id: string`；
+- `title: string`，1–80 grapheme；
+- `theme: { paper: "warm-white", ink: "black", accent: "yellow-blue-green" }`；
+- `blocks: NoteBlock[]`，1–12 个；
+- `arrows: ArrowAnnotation[]`，0–8 个；
+- `truncated: boolean`。
+
+所有块必须包含判别字段 `type` 和 `id`。只有 text、bullet-list 和 callout 可包含 `annotations: TextAnnotation[]`；comparison、flow-diagram 和 line-chart 不允许 annotations 字段。跨块箭头只存在于文档级 arrows，不归属于任何块。
+
+字段约束：
+
+- `TextSpan`：必填 id、text；可选 `emphasis: normal | strong`；text 为 1–240 grapheme；每个 spans 数组 1–12 项。
+- `text`：必填 type、id、spans；可选 annotations。
+- `bullet-list`：必填 type、id、items；items 为 1–8 项，每项必填唯一 id 和 spans；可选 annotations。
+- `comparison`：必填 type、id、left、right；每侧必填 title（1–80 grapheme）和 items（1–8 个字符串，每项 1–160 grapheme）。
+- `flow-diagram`：必填 type、id、nodes、edges；nodes 为 2–8 项，每项含唯一 id 和 1–80 grapheme 的 label；edges 为 1–12 项，每项含 from、to 和可选 1–60 grapheme label，且 from 不得等于 to。
+- `line-chart`：必填 type、id、labels、series；可选 title（1–80 grapheme）；labels 为 2–30 个字符串，每项 1–30 grapheme；series 为 1–3 项，每项含唯一 id、1–40 grapheme name、`color: blue | green` 和有限数字 points；每个 points 长度必须等于 labels 长度。
+- `callout`：必填 type、id、`tone: idea | warning | summary`、spans；可选 annotations。
+- `TextAnnotation`：必填唯一 id、`type: highlight | circle | underline | strike` 和 `target: { blockId, spanId }`；target 必须位于拥有该 annotations 数组的同一块内。
+- `ArrowAnnotation`：必填唯一 id、`type: arrow`、from、to；可选 1–60 grapheme label；端点含 blockId 和 `anchor: top | right | bottom | left | center`，from 与 to 必须引用两个不同的现存块。
+
+单文档所有用户可见内容合计最多 9,000 grapheme，TextAnnotation 最多 20 个，流程边合计最多 24 个。truncated 为 true 时，renderer 在纸张页脚显示固定的“内容已精简”；该页脚是 UI 状态，不占块、Span 或 9,000 grapheme 配额，因此不会导致 Schema 再次超限。
+
+### 15.2 ID 与引用规范化
+
+服务端先扫描原始文档并记录所有原始 ID 的出现次数，再生成基于文档位置的规范 ID。仅出现一次的原始 ID 建立到规范 ID 的映射；重复、缺失或格式非法的原始 ID 不建立映射。随后统一解析引用：可唯一映射的引用被重写为规范 ID，任何指向歧义 ID、缺失 ID 或错误作用域的标注、箭头或流程边都被删除并生成诊断。系统绝不猜测重复 ID 指向哪一个元素。
+
+### 15.3 持久化字节限制
+
+2MB 上限定义为 `TextEncoder().encode(JSON.stringify(envelope)).byteLength <= 2 * 1024 * 1024`。每次写入前从最旧完整问答开始淘汰，直到同时满足字节限制和 20 轮限制；单个最新轮次自身超过 2MB 时不持久化该轮，但保留在当前内存会话并显示一次提示。
+
+### 15.4 精确验收谓词
+
+- 速度测试使用同一时间轴和假时钟，忽略初始化时间；`duration2x / duration1x` 必须位于 0.48–0.52。
+- 安全区域要求整个矩形满足 `x >= 64`、`x + width <= 730`、`y >= 64`、`y + height <= 1059`。
+- 时间轴在活动页从 n 变为 n+1 且开始该页首个事件时调用一次 `onPageFollow(n + 1)`；同一页后续事件不得再次调用。端到端测试通过该回调产生的 `handwriting:page-follow` 自定义事件计数。
