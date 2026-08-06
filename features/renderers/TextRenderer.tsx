@@ -15,7 +15,7 @@ function characterTransform(index: number) {
 function GraphemeText({ text, visible, offset = 0 }: { text: string; visible: number; offset?: number }) {
   const graphemes = splitGraphemes(text);
   return <>{graphemes.slice(0, Math.max(0, visible)).map((grapheme, index) => (
-    <span className="handwritten-char" key={`${offset + index}-${grapheme}`} style={{ transform: characterTransform(offset + index) }}>
+    <span className={`handwritten-char${/[A-Za-z0-9]/u.test(grapheme) ? " latin-handwritten" : ""}`} key={`${offset + index}-${grapheme}`} style={{ transform: characterTransform(offset + index) }}>
       {grapheme === " " ? "\u00a0" : grapheme}
     </span>
   ))}</>;

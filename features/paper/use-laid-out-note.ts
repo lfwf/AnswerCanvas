@@ -15,7 +15,10 @@ export function useLaidOutNote(note: NoteDocument | null): LayoutDocument | null
     const primary = createCanvasTextMeasurer();
     const fonts = typeof document !== "undefined" ? document.fonts : undefined;
     const handwritingReady = fonts?.load
-      ? fonts.load('400 29px "AnswerCanvasHandwriting"', "手写体").catch(() => [])
+      ? Promise.all([
+        fonts.load('400 29px "AnswerCanvasHandwriting"', "手写体"),
+        fonts.load('500 29px "Caveat"', "Skill"),
+      ]).catch(() => [])
       : Promise.resolve([]);
     void Promise.all([
       handwritingReady,

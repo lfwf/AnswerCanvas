@@ -1,5 +1,6 @@
 import { countGraphemes } from "@/lib/text/graphemes";
 import type { ArrowLayoutElement, ListLayoutElement, TextLayoutElement } from "@/features/layout/layout-types";
+import { roughEllipsePath, roughLinePath } from "./rough-strokes";
 
 function annotationGeometry(element: TextLayoutElement | ListLayoutElement, spanId: string) {
   const spans = element.kind === "bullet-list"
@@ -42,13 +43,18 @@ export function AnnotationLayer({ element, progress }: { element: TextLayoutElem
         const geometry = annotationGeometry(element, annotation.target.spanId);
         const wobble = index % 2 ? 2 : -2;
         if (annotation.type === "highlight") {
-          return <path key={annotation.id} className="annotation-highlight" d={`M ${geometry.x} ${geometry.y} Q ${geometry.x + geometry.width * 0.48} ${geometry.y + wobble} ${geometry.x + geometry.width} ${geometry.y + 1}`} pathLength="1" style={{ strokeDasharray: 1, strokeDashoffset: 1 - value }} />;
+          return <path key={annotation.id} className="annotation-highlight" d={roughLinePath({ x: geometry.x, y: geometry.y }, { x: geometry.x + geometry.width, y: geometry.y + 1 }, `${element.id}:${annotation.id}`, { segments: 8, wobble: 2.4, bow: wobble })} pathLength="1" style={{ strokeDasharray: 1, strokeDashoffset: 1 - value }} />;
         }
         if (annotation.type === "circle") {
-          return <ellipse key={annotation.id} className="annotation-blue" cx={geometry.x + geometry.width / 2} cy={geometry.y - 9} rx={geometry.width / 2 + 10} ry={geometry.height / 2 + 4} pathLength="1" style={{ strokeDasharray: 1, strokeDashoffset: 1 - value }} />;
+          const cx = geometry.x + geometry.width / 2;
+          const cy = geometry.y - 9;
+          return <g key={annotation.id}>
+            <path className="annotation-blue" d={roughEllipsePath(cx, cy, geometry.width / 2 + 10, geometry.height / 2 + 4, `${element.id}:${annotation.id}:outer`, -0.04, 2.8)} pathLength="1" style={{ strokeDasharray: 1, strokeDashoffset: 1 - value }} />
+            <path className="annotation-blue" opacity="0.24" d={roughEllipsePath(cx + 1.5, cy - 1, geometry.width / 2 + 8, geometry.height / 2 + 3, `${element.id}:${annotation.id}:echo`, 0.02, 2.1)} pathLength="1" style={{ strokeDasharray: 1, strokeDashoffset: 1 - value }} />
+          </g>;
         }
         const lineY = annotation.type === "strike" ? geometry.y - 10 : geometry.y + 8;
-        return <path key={annotation.id} className={annotation.type === "strike" ? "annotation-red" : "annotation-blue"} d={`M ${geometry.x - 2} ${lineY} Q ${geometry.x + geometry.width * 0.48} ${lineY + wobble} ${geometry.x + geometry.width + 4} ${lineY}`} pathLength="1" style={{ strokeDasharray: 1, strokeDashoffset: 1 - value }} />;
+        return <path key={annotation.id} className={annotation.type === "strike" ? "annotation-red" : "annotation-blue"} d={roughLinePath({ x: geometry.x - 2, y: lineY }, { x: geometry.x + geometry.width + 4, y: lineY }, `${element.id}:${annotation.id}`, { segments: 7, wobble: 1.8, bow: wobble })} pathLength="1" style={{ strokeDasharray: 1, strokeDashoffset: 1 - value }} />;
       })}
     </svg>
   );
@@ -63,7 +69,7 @@ export function ArrowRenderer({ element, progress }: { element: ArrowLayoutEleme
           <path d="M0,0 L8,4 L0,8" fill="none" stroke="currentColor" />
         </marker>
       </defs>
-      <path d={`M ${fromPoint.x} ${fromPoint.y} Q ${(fromPoint.x + toPoint.x) / 2 + 24} ${(fromPoint.y + toPoint.y) / 2 - 24} ${toPoint.x} ${toPoint.y}`} pathLength="1" markerEnd={`url(#head-${element.id})`} style={{ strokeDasharray: 1, strokeDashoffset: 1 - progress }} />
+      <path d={roughLinePath(fromPoint, toPoint, element.id, { segments: 10, wobble: 2.2, bow: -24 })} pathLength="1" markerEnd={`url(#head-${element.id})`} style={{ strokeDasharray: 1, strokeDashoffset: 1 - progress }} />
     </svg>
   );
 }

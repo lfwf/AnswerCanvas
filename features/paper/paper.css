@@ -102,6 +102,7 @@
 .reveal-mask { position: relative; z-index: 1; height: 100%; overflow: visible; }
 .handwritten-line { min-height: 47px; white-space: pre-wrap; }
 .handwritten-char { display: inline-block; white-space: pre; transform-origin: 50% 78%; will-change: transform; }
+.handwritten-char.latin-handwritten { font-family: "Caveat", "Segoe Print", "Bradley Hand", cursive; font-weight: 500; letter-spacing: -0.015em; }
 
 .note-list-item { display: flex; gap: 14px; margin-bottom: 10px; }
 .note-list-item > span { color: #171717; font-size: 30px; line-height: 44px; transform: rotate(-7deg); }
@@ -129,7 +130,7 @@
 .flow-node-ring.blue { stroke: #397fbe; }
 .flow-node-ring.green { stroke: #2e8a5d; }
 .diagram-element text,
-.chart-element text { fill: #191919; }
+.chart-element text { fill: #191919; font-family: "Caveat", "AnswerCanvasHandwriting", "Segoe Print", "Bradley Hand", cursive; }
 .chart-axis { stroke-width: 2.2; }
 .chart-tick { stroke: #1b1b1b; stroke-width: 2; }
 .chart-grid { stroke: #1b1b1b; stroke-width: 1; opacity: 0.06; }

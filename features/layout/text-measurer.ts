@@ -1,6 +1,9 @@
+import { splitGraphemes } from "@/lib/text/graphemes";
+
 export interface TextMeasurer { measure(text: string, fontSize: number, fontFamily?: string): number; }
 
 const HANDWRITING_FONT_STACK = '"AnswerCanvasHandwriting", "Caveat", "STKaiti", "KaiTi", "Segoe Print", "Bradley Hand", cursive';
+const LATIN_HANDWRITING_FONT_STACK = '"Caveat", "Segoe Print", "Bradley Hand", cursive';
 
 export function createCanvasTextMeasurer(): TextMeasurer {
   const canvas = typeof document === "undefined" ? null : document.createElement("canvas");
@@ -8,8 +11,11 @@ export function createCanvasTextMeasurer(): TextMeasurer {
   return {
     measure(text, fontSize, fontFamily = HANDWRITING_FONT_STACK) {
       if (!context) return Array.from(text).length * fontSize;
-      context.font = `${fontSize}px ${fontFamily}`;
-      return context.measureText(text).width;
+      return splitGraphemes(text).reduce((width, grapheme) => {
+        const family = /[A-Za-z0-9]/u.test(grapheme) ? LATIN_HANDWRITING_FONT_STACK : fontFamily;
+        context.font = `${fontSize}px ${family}`;
+        return width + context.measureText(grapheme).width;
+      }, 0);
     },
   };
 }

@@ -1,5 +1,6 @@
 import type { FlowLayoutElement } from "@/features/layout/layout-types";
 import { revealText } from "./TextRenderer";
+import { roughEllipsePath, roughLinePath } from "./rough-strokes";
 
 export function FlowDiagram({ element, progress }: { element: FlowLayoutElement; progress: Record<string, number> }) {
   const { nodes, edges } = element.payload;
@@ -18,7 +19,7 @@ export function FlowDiagram({ element, progress }: { element: FlowLayoutElement;
         const value = progress[`${element.id}:edge:${index}`] ?? 0;
         return (
           <g key={`${edge.from}-${edge.to}-${index}`}>
-            <path className="flow-edge" d={`M ${from.x + 72} ${from.y} C ${from.x + 105} ${from.y - 18}, ${to.x - 105} ${to.y + 18}, ${to.x - 72} ${to.y}`} pathLength="1" style={{ strokeDasharray: 1, strokeDashoffset: 1 - value }} />
+            <path className="flow-edge" d={roughLinePath({ x: from.x + 72, y: from.y }, { x: to.x - 72, y: to.y }, `${element.id}:${edge.from}:${edge.to}:${index}`, { segments: 9, wobble: 2, bow: -18 })} pathLength="1" style={{ strokeDasharray: 1, strokeDashoffset: 1 - value }} />
             {edge.label && value >= 1 && <text x={(from.x + to.x) / 2} y={from.y - 24} textAnchor="middle">{edge.label}</text>}
           </g>
         );
@@ -30,8 +31,8 @@ export function FlowDiagram({ element, progress }: { element: FlowLayoutElement;
         const drawStyle = { strokeDasharray: 1, strokeDashoffset: 1 - ringProgress };
         return (
           <g key={node.id}>
-            <ellipse className={`flow-node-ring ${index % 2 ? "green" : "blue"}`} cx={point.x} cy={point.y} rx="72" ry="34" pathLength="1" transform={`rotate(${index % 2 ? 1.2 : -1.2} ${point.x} ${point.y})`} style={drawStyle} />
-            <ellipse className={`flow-node-ring ${index % 2 ? "green" : "blue"}`} cx={point.x + 1} cy={point.y - 1} rx="70" ry="32" pathLength="1" opacity="0.22" style={drawStyle} />
+            <path className={`flow-node-ring ${index % 2 ? "green" : "blue"}`} d={roughEllipsePath(point.x, point.y, 72, 34, `${element.id}:${node.id}:outer`, index % 2 ? 0.02 : -0.04, 2.5)} pathLength="1" style={drawStyle} />
+            <path className={`flow-node-ring ${index % 2 ? "green" : "blue"}`} d={roughEllipsePath(point.x + 1.5, point.y - 1, 70, 32, `${element.id}:${node.id}:echo`, 0.01, 2)} pathLength="1" opacity="0.24" style={drawStyle} />
             <text x={point.x} y={point.y + 8} textAnchor="middle">{revealText(node.label, labelProgress)}</text>
           </g>
         );
