@@ -1,10 +1,54 @@
 import type { ChartLayoutElement } from "@/features/layout/layout-types";
-function pathFor(points: number[], width: number, height: number) { const min = Math.min(...points), max = Math.max(...points), span = max - min || 1; return points.map((point, index) => `${index ? "L" : "M"} ${50 + index * (width - 90) / Math.max(1, points.length - 1)} ${height - 42 - (point - min) / span * (height - 90)}`).join(" "); }
+
+function formatValue(value: number) {
+  const rounded = Math.abs(value) >= 100 ? value.toFixed(0) : value.toFixed(1).replace(/\.0$/u, "");
+  return `${value > 0 ? "+" : ""}${rounded}`;
+}
+
 export function LineChart({ element, progress }: { element: ChartLayoutElement; progress: Record<string, number> }) {
+  const allPoints = element.payload.series.flatMap((series) => series.points);
+  const min = Math.min(0, ...allPoints);
+  const max = Math.max(0, ...allPoints);
+  const span = max - min || 1;
+  const left = 58;
+  const right = element.box.width - 36;
+  const top = element.payload.title ? 48 : 30;
+  const bottom = element.box.height - 48;
+  const xFor = (index: number, count: number) => left + index * (right - left) / Math.max(1, count - 1);
+  const yFor = (value: number) => bottom - (value - min) / span * (bottom - top);
+  const pathFor = (points: number[]) => points.map((point, index) => `${index ? "L" : "M"} ${xFor(index, points.length)} ${yFor(point)}`).join(" ");
+  const ticks = [0, 0.5, 1].map((ratio) => ({ ratio, value: min + ratio * span, y: bottom - ratio * (bottom - top) }));
+  const visibleLabelIndexes = new Set([0, Math.floor((element.payload.labels.length - 1) / 2), element.payload.labels.length - 1]);
   const labelsProgress = progress[`${element.id}:labels`] ?? 0;
-  return <svg className="chart-element handwritten-element" style={{ left: element.box.x, top: element.box.y, width: element.box.width, height: element.box.height }} viewBox={`0 0 ${element.box.width} ${element.box.height}`}>
-    <path className="chart-axis" d={`M 44 25 L 44 ${element.box.height - 38} L ${element.box.width - 25} ${element.box.height - 38}`} />
-    {element.payload.series.map((series) => <path key={series.id} className={`chart-line ${series.color}`} d={pathFor(series.points, element.box.width, element.box.height)} pathLength="1" style={{ strokeDasharray: 1, strokeDashoffset: 1 - (progress[`${element.id}:series:${series.id}`] ?? 0) }} />)}
-    <g style={{ opacity: labelsProgress }}>{element.payload.labels.map((label, index) => <text key={`${label}-${index}`} x={50 + index * (element.box.width - 90) / Math.max(1, element.payload.labels.length - 1)} y={element.box.height - 14} textAnchor="middle">{label}</text>)}</g>
-  </svg>;
+
+  return (
+    <svg className="chart-element handwritten-element" style={{ left: element.box.x, top: element.box.y, width: element.box.width, height: element.box.height }} viewBox={`0 0 ${element.box.width} ${element.box.height}`}>
+      {element.payload.title && <text className="chart-title" x={left} y="26">{element.payload.title}</text>}
+      {ticks.map((tick) => (
+        <g key={tick.ratio}>
+          <path className="chart-grid" d={`M ${left} ${tick.y} L ${right} ${tick.y}`} />
+          <path className="chart-tick" d={`M ${left - 7} ${tick.y} L ${left + 4} ${tick.y}`} />
+          <text x={left - 12} y={tick.y + 7} textAnchor="end">{formatValue(tick.value)}</text>
+        </g>
+      ))}
+      <path className="chart-axis" d={`M ${left} ${top - 5} L ${left} ${bottom} L ${right + 4} ${bottom}`} />
+      {element.payload.series.map((series) => {
+        const value = progress[`${element.id}:series:${series.id}`] ?? 0;
+        const path = pathFor(series.points);
+        const lastPoint = series.points.at(-1) ?? 0;
+        const lastX = xFor(series.points.length - 1, series.points.length);
+        const lastY = yFor(lastPoint);
+        return (
+          <g key={series.id}>
+            <path className="chart-line-shadow" d={path} pathLength="1" style={{ strokeDasharray: 1, strokeDashoffset: 1 - value }} />
+            <path className={`chart-line ${series.color}`} d={path} pathLength="1" style={{ strokeDasharray: 1, strokeDashoffset: 1 - value }} />
+            <text className="chart-series-label" x={Math.min(right - 122, lastX - 8)} y={Math.max(top + 20, lastY - 16)} style={{ opacity: labelsProgress }}>{series.name} {formatValue(lastPoint)}</text>
+          </g>
+        );
+      })}
+      <g style={{ opacity: labelsProgress }}>
+        {element.payload.labels.map((label, index) => visibleLabelIndexes.has(index) ? <text key={`${label}-${index}`} x={xFor(index, element.payload.labels.length)} y={bottom + 30} textAnchor="middle">{label}</text> : null)}
+      </g>
+    </svg>
+  );
 }
