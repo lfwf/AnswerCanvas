@@ -63,8 +63,8 @@ features/
   layout/                   换行、测量、分页和坐标计算
   paper/                    A4 页面、缩放和翻页/滚动
   handwriting/              文字显现、笔尖和时间轴
-  diagrams/                 流程图、对比图、折线图和箭头
-  annotations/              荧光笔、圈选、删除线和下划线
+  diagrams/                 流程图和折线图
+  annotations/              荧光笔、圈选、删除线、下划线和跨元素箭头
 lib/
   ai/                       OpenAI 客户端、提示词和结果转换
 ```
@@ -222,3 +222,77 @@ API Key 仅通过服务端环境变量 `OPENAI_API_KEY` 获取，绝不下发到
 - 接入复杂插图生成模型。
 - 支持云端会话、分享与协作。
 
+
+## 14. 可执行契约补充（规范性）
+
+本节用于消除前文中“截断、降级、可用”等宽泛表述；发生冲突时以本节为准。
+
+### 14.1 完整运行时 Schema
+
+所有对象采用严格 Schema，未知字段一律拒绝。服务端在进入严格校验前可把 AI 产生的未知块转换为说明性正文；客户端和本地存储中的未知块直接判为无效。
+
+- `NoteDocument`：必填 `id`、`title`、`blocks`；可选 `theme`，缺省为暖白纸、黑墨和黄/蓝/绿强调色。
+- 每个块都有唯一 `id` 和可选 `annotations`。
+- `text`：`spans: { id, text, emphasis? }[]`。
+- `bullet-list`：`items: { id, spans }[]`。
+- `comparison`：左右各含 `title` 和 `items: string[]`。
+- `flow-diagram`：`nodes: { id, label }[]` 和 `edges: { from, to, label? }[]`。
+- `line-chart`：可选标题、`labels`，以及 `series: { id, name, color, points }[]`。
+- `callout`：`tone: idea | warning | summary` 和 `spans`。
+- 文字标注：`{ id, type, target: { blockId, spanId } }`，类型为 highlight、circle、underline 或 strike。
+- 箭头标注：`{ id, type: arrow, from, to, label? }`；端点为 `{ blockId, anchor }`，anchor 为 top、right、bottom、left 或 center。
+
+文档、块、Span、节点和标注 ID 必须在各自作用域唯一。服务端规范化重复 ID。文字标注必须引用现存 Span，箭头必须引用现存块，流程边必须引用同一流程块的节点；失效的单个标注或边会被删除并记录诊断，不能拖垮整篇笔记。
+
+限制为：问题 4,000 个 Unicode grapheme、标题 80、块 12、单块可见文字 1,200、列表项 8、流程节点 8、图表序列 3、每序列数据点 30、标注总数 20。达到限制而精简内容时，末尾必须加入可见的“内容已精简”提示。
+
+### 14.2 布局与渲染接口
+
+逻辑 A4 固定为 `794 x 1123`，四周安全边距 64，正文默认行高 38。布局器输出 `LayoutDocument -> LayoutPage[] -> LayoutElement[]`；每个元素包含稳定 ID、blockId、pageIndex、kind、边界框和类型化 payload。HTML/SVG renderer 只消费该结果。
+
+文字以 Unicode grapheme 分割，优先使用 `Intl.Segmenter`，缺失时使用受测的 splitter。布局前最多等待 `document.fonts.ready` 3 秒；超时后锁定系统回退字体，本次笔记不再因字体迟到而重排。客户端统一使用隐藏 Canvas 的 `measureText`，测试注入确定性度量器。
+
+分页规则：
+
+- 正文和列表按完整行拆分，页底至少保留两行。
+- 对比块保持两栏结构，必要时同步按列表行拆页。
+- 流程图和折线图不可拆；先缩小至最低 70%，仍放不下则转换为文字摘要。
+- Callout 优先整体移至下一页；单块仍过高则转换为正文。
+- 任何输入行都不能被静默丢弃，所有边界框必须位于安全区域。
+
+布局模块产生几何信息；renderer 产生 DOM/SVG 目标；`handwriting/timeline-builder` 根据布局结果和 renderer 暴露的目标建立事件。布局器不决定动画时长，renderer 不决定全局播放顺序。
+
+### 14.3 请求与 OpenAI 契约
+
+请求状态为 `idle -> submitting -> success | error`。每次提交获得单调 requestId，响应只更新对应消息。迟到响应不能抢占用户当前选择的笔记。重试复用原消息位置并增加尝试次数，不追加重复的用户消息。失败时保留上一张成功笔记；选择失败消息时显示错误卡片。
+
+OpenAI 只在服务端调用，采用严格 JSON Schema structured output。输入超过 4,000 grapheme 返回 400。上游请求 30 秒超时，并随客户端 AbortSignal 取消。结构失败只允许一次修复；修复输入仅含原输出与 Schema 错误。再次失败时用安全纯文本构造合法 TextBlock。
+
+成功返回 `200 { data: ChatResult }`；可重试故障返回 `502/504 { error: { code, message, retryable: true } }`；输入错误返回 400 且 retryable 为 false。日志不得包含 API Key 或完整用户问题。
+
+`demo` 表示无 Key 时由确定性本地模板按问题关键词生成；未知主题使用“定义、要点、流程”通用模板。`fallback` 表示真实 AI 已调用，但结构修复失败后返回的合法纯文本笔记。
+
+### 14.4 动画语义
+
+事件按 pageIndex、elementIndex、phase、稳定 eventId 排序。默认文字每个 grapheme 45ms，路径动画按长度计算并限制在 300–2,500ms，元素间停顿 120ms。
+
+暂停保存逻辑播放位置；继续从原位置恢复；播放中变速立即改变后续时钟倍率且不跳帧；重播先恢复全部元素的初始隐藏状态，再从零播放。进入下一页首个事件时只触发一次平滑跟随。用户手动滚动后的 3 秒内暂停自动跟随。切换笔记必须 abort 旧时间轴并移除回调。
+
+启用 `prefers-reduced-motion: reduce` 时默认立即显示完成态，不移动笔尖或自动滚动；用户主动重播时使用淡入而非路径移动。
+
+### 14.5 持久化契约
+
+存储包络为 `{ version: 1, conversations, selectedMessageId? }`。ID 使用 `crypto.randomUUID()`，测试可注入生成器；加载碰撞时保留第一项。
+
+最多保存 20 轮问答或 2MB，以先到者为准，超限删除最旧的完整轮次。无效 JSON、未知版本或 Schema 失败时清空持久化值并继续使用空历史；第一版不迁移未知版本。localStorage 不可用或 quota 失败时继续使用内存状态，并显示一次非阻塞提示。
+
+### 14.6 可测验收定义
+
+- “什么是 Skill？”的 demo 固定产生标题、至少两个正文/列表块、一个黄色 highlight 和一个三节点流程图。
+- 无 Key 时不得发起 OpenAI 请求，仍能完成提问、渲染、播放控制和刷新恢复。
+- 暂停后 300ms 内逻辑位置不再推进；2x 剩余播放时间约为 1x 的一半；重播的元素顺序、坐标和扰动值一致。
+- 每个布局边界框都位于 x=64..730、y=64..1059；跨页测试不丢输入行，进入新页首个事件时产生一次跟随。
+- 浏览器 bundle、API 响应、本地存储和测试快照中都不得出现测试 API Key。
+- 大于等于 1024px 使用双栏，小于 1024px 使用上下布局；1440x900 与 390x844 端到端测试无页面级横向溢出。
+- 单元测试覆盖引用完整性、grapheme、字体超时、超大块降级、存储损坏/quota、假时钟播放控制、未知块转换。
+- 组件及端到端测试覆盖快速连续提交与迟到响应、超时、一次修复成功、修复失败降级、页面跟随和 reduced-motion。
