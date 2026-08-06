@@ -5,6 +5,7 @@ import { useHandwritingPlayer } from "@/features/handwriting/use-handwriting-pla
 import { PaperPage } from "./PaperPage";
 import { useLaidOutNote } from "./use-laid-out-note";
 import "./paper.css";
+import "./font.css";
 
 function useReducedMotion() {
   const [reduced, setReduced] = useState(false);
