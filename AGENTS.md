@@ -5,7 +5,7 @@
 When the user uploads a notebook/reference image and asks to “转成手写”, “复刻”, “做成可播放手写版本”, or equivalent:
 
 1. **Never overwrite an existing scene.** Existing scenes are historical outputs and must stay reproducible.
-2. Read `docs/superpowers/specs/2026-08-07-multi-scene-recreation-design.md` before editing.
+2. Read `docs/superpowers/specs/2026-08-07-multi-scene-recreation-design.md` before editing. If the task is a learning/analysis walkthrough (grammar, formula, code, chart, process, etc.), also read `docs/superpowers/specs/2026-08-07-immersive-analysis-playback.md`.
 3. Inspect the image semantically, not only with OCR. Identify page structure, text blocks, explicit line breaks, Cue/Notes relationships, annotations, boxes, arrows, diagrams, colors, and a plausible human writing order.
 4. Create one new file under `features/recreation/scenes/<scene-id>.ts`. Use a canonical lowercase kebab-case scene ID and preserve the source image aspect ratio in `width`/`height`.
 5. Give every new scene a concise `prompt` that reads like the user's original request. The scene page renders this prompt as the user message above the handwritten answer, while `title` remains the short history label.
