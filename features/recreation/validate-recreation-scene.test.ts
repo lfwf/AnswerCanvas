@@ -54,4 +54,17 @@ describe("validateRecreationScene", () => {
     };
     expect(validateRecreationScene(broken).some((issue) => issue.includes("missing element"))).toBe(true);
   });
+
+  it("reports invalid or missing per-element lecture visibility overrides", () => {
+    const first = immersiveGrammarAnalysisScene.elements.find((element): element is RecreationViewEffect => element.kind === "view" && element.mode === "focus");
+    expect(first).toBeDefined();
+    if (!first) return;
+    const broken: RecreationScene = {
+      ...immersiveGrammarAnalysisScene,
+      elements: immersiveGrammarAnalysisScene.elements.map((element) => element.id === first.id ? { ...first, elementOpacity: { ...(first.elementOpacity ?? {}), "missing-opacity-target": 1.4 } } : element),
+    };
+    const issues = validateRecreationScene(broken);
+    expect(issues.some((issue) => issue.includes("invalid opacity"))).toBe(true);
+    expect(issues.some((issue) => issue.includes("missing opacity element"))).toBe(true);
+  });
 });
