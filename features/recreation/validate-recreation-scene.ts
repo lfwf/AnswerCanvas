@@ -35,9 +35,14 @@ export function validateRecreationScene(scene: RecreationScene): string[] {
       if (element.height !== undefined && requiredHeight > element.height + 1) issues.push(`text ${element.id} height is too small for explicit lines`);
     }
     if (element.kind === "box" && (element.x < 0 || element.y < 0 || element.x + element.width > scene.width + 0.5 || element.y + element.height > scene.height + 0.5)) issues.push(`box ${element.id} is outside scene bounds`);
+    if (element.kind === "annotation" && element.gap !== undefined && (!Number.isFinite(element.gap) || element.gap < 0)) issues.push(`annotation ${element.id} has invalid gap`);
     if (element.kind === "view") {
       if (element.durationMs !== undefined && (!Number.isFinite(element.durationMs) || element.durationMs <= 0)) issues.push(`view ${element.id} has invalid duration`);
       if (element.dimOpacity !== undefined && (!Number.isFinite(element.dimOpacity) || element.dimOpacity < 0 || element.dimOpacity > 1)) issues.push(`view ${element.id} has invalid dimOpacity`);
+      if (element.phase !== undefined && !element.phase.trim()) issues.push(`view ${element.id} has empty phase`);
+      for (const [targetId, opacity] of Object.entries(element.elementOpacity ?? {})) {
+        if (!Number.isFinite(opacity) || opacity < 0 || opacity > 1) issues.push(`view ${element.id} has invalid opacity for ${targetId}`);
+      }
     }
   }
 
@@ -63,6 +68,7 @@ export function validateRecreationScene(scene: RecreationScene): string[] {
     }
     if (element.kind === "view") {
       for (const targetId of element.targetIds ?? []) if (!ids.has(targetId)) issues.push(`view ${element.id} references missing element ${targetId}`);
+      for (const targetId of Object.keys(element.elementOpacity ?? {})) if (!ids.has(targetId)) issues.push(`view ${element.id} references missing opacity element ${targetId}`);
     }
   }
   return issues;

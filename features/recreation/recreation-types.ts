@@ -102,6 +102,7 @@ export type RecreationAnnotation = RecreationDynamicMeta & {
   color?: string;
   fontSize?: number;
   width?: number;
+  gap?: number;
   offsetX?: number;
   offsetY?: number;
   characterJitter?: number;
@@ -110,8 +111,10 @@ export type RecreationAnnotation = RecreationDynamicMeta & {
 export type RecreationViewEffect = RecreationDynamicMeta & {
   kind: "view";
   mode: "focus" | "restore";
+  phase?: string;
   targetIds?: string[];
   dimOpacity?: number;
+  elementOpacity?: Readonly<Record<string, number>>;
   durationMs?: number;
 };
 

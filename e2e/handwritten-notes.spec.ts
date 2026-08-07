@@ -17,7 +17,7 @@ test("scene page is presented as a conversation with history, prompt and compose
   await expect(page.getByRole("link", { name: /未来3年，最需要 AI 能力的岗位/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /关于 AI 的核心概念与发展/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /Skill 与 Agent 课堂笔记/ })).toBeVisible();
-  await expect(page.locator(".user-message")).toContainText("不要重复抄句子");
+  await expect(page.locator(".user-message")).toContainText("原句只写一次");
   await expect(page.getByRole("article", { name: "AnswerCanvas 手写回答" })).toBeVisible();
   await expect(page.getByRole("textbox", { name: "继续提问" })).toBeVisible();
   await expect(page.getByRole("button", { name: "发送" })).toBeVisible();
@@ -27,7 +27,7 @@ test("immersive grammar scene keeps one source sentence and anchored analysis la
   await page.goto("/scenes/immersive-grammar-analysis");
   await expect(page.locator('[data-scene-id="immersive-grammar-analysis"]')).toBeVisible();
   await expect(page.locator(".recreation-paper--ruled")).toBeVisible();
-  await expect(page.locator("svg")).toHaveAttribute("viewBox", "0 0 1536 1450");
+  await expect(page.locator("svg")).toHaveAttribute("viewBox", "0 0 1536 1580");
   await expect(page.locator('[data-text-id="full-sentence"]')).toHaveCount(1);
   await expect(page.locator('[data-annotation-id="clause-1-label"]')).toHaveCount(1);
   await expect(page.locator('[data-annotation-id="c3-object"]')).toHaveCount(1);
