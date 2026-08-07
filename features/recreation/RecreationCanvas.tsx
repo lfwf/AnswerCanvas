@@ -61,8 +61,9 @@ function AnnotationElement({ element, progress, anchor, opacity }: { element: Re
   const fontSize = element.fontSize ?? 15;
   const width = element.width ?? Math.max(92, Math.min(260, units.length * fontSize * 0.78));
   const position = element.position ?? "above";
+  const gap = element.gap ?? (position === "above" ? 10 : 8);
   const left = anchor ? anchor.x + anchor.width / 2 - width / 2 + (element.offsetX ?? 0) : 0;
-  const top = anchor ? (position === "above" ? anchor.y - fontSize * 1.65 : anchor.y + anchor.height + 8) + (element.offsetY ?? 0) : 0;
+  const top = anchor ? (position === "above" ? anchor.y - fontSize - gap : anchor.y + anchor.height + gap) + (element.offsetY ?? 0) : 0;
   const jitter = element.characterJitter ?? 0.42;
   return <div className="recreation-annotation" data-annotation-id={element.id} aria-label={element.label} style={{ left, top, width, color: element.color ?? "#244f9d", fontSize, opacity: anchor ? opacity : 0 }}>
     {units.map((unit, index) => <span className={classForUnit(unit)} key={`${element.id}:${index}`} style={{ visibility: index < visible ? "visible" : "hidden", transform: unit.trim() ? characterTransform(element.id, index, jitter) : undefined }} aria-hidden="true">{unit === " " ? "\u00a0" : unit}</span>)}
