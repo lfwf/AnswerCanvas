@@ -107,8 +107,13 @@ function MarkPaths({ mark, segments, progress }: { mark: RecreationMark; segment
 function DrawnPasses({ element, passes, progress, color, width, opacity, dash, fill }: { element: RecreationStroke | RecreationBox; passes: HandDrawnPass[]; progress: number; color: string; width: number; opacity: number; dash?: string; fill?: string }) {
   return <g>{passes.map((pass, index) => {
     const value = segmentProgress(progress, index, passes.length);
-    const canRevealByLength = !dash;
-    return <path key={pass.id} d={pass.path} fill={index === 0 && progress >= 1 ? (fill ?? "none") : "none"} stroke={color} strokeWidth={width * pass.widthScale} strokeOpacity={opacity * pass.opacity * (canRevealByLength ? 1 : value)} strokeDasharray={dash ?? "1"} strokeDashoffset={canRevealByLength ? 1 - value : undefined} pathLength={canRevealByLength ? 1 : undefined} strokeLinecap="round" strokeLinejoin="round" data-drawn-element={element.id} />;
+    const maskId = `draw-mask-${pass.id.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+    const path = <path d={pass.path} fill={index === 0 && progress >= 1 ? (fill ?? "none") : "none"} stroke={color} strokeWidth={width * pass.widthScale} strokeOpacity={opacity * pass.opacity} strokeDasharray={dash ?? "1"} strokeDashoffset={dash ? undefined : 1 - value} pathLength={dash ? undefined : 1} strokeLinecap="round" strokeLinejoin="round" mask={dash ? `url(#${maskId})` : undefined} data-drawn-element={element.id} />;
+    if (!dash) return <g key={pass.id}>{path}</g>;
+    return <g key={pass.id}>
+      <defs><mask id={maskId} maskUnits="userSpaceOnUse"><path d={pass.path} fill="none" stroke="white" strokeWidth={Math.max(6, width * 4)} pathLength="1" strokeDasharray="1" strokeDashoffset={1 - value} strokeLinecap="round" strokeLinejoin="round" /></mask></defs>
+      {path}
+    </g>;
   })}</g>;
 }
 
