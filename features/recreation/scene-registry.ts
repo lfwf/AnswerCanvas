@@ -1,6 +1,7 @@
 import { recreationScenes } from "./scenes";
 import type { RecreationScene } from "./recreation-types";
 import { isAnimatedElement, isStaticElement } from "./recreation-types";
+import { validateRecreationScene } from "./validate-recreation-scene";
 
 export const DEFAULT_SCENE_ID = "ai-core-concepts";
 const SCENE_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -34,6 +35,9 @@ function assertScene(scene: RecreationScene, knownIds: Set<string>) {
     if (orders.has(element.order)) throw new Error(`Scene ${scene.id} contains duplicate dynamic order: ${element.order}`);
     orders.add(element.order);
   }
+
+  const issues = validateRecreationScene(scene);
+  if (issues.length) throw new Error(`Invalid scene ${scene.id}: ${issues.join("; ")}`);
 }
 
 const ids = new Set<string>();
