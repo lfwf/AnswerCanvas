@@ -7,20 +7,20 @@ import { QuestionHeader } from "./QuestionHeader";
 import { ListRenderer, revealText, TextRenderer, TitleRenderer } from "./TextRenderer";
 
 function ComparisonRenderer({ element, progress }: { element: ComparisonLayoutElement; progress: number }) {
+  const leftCount = element.payload.left.items.length + 1;
   const ordered = [element.payload.left.title, ...element.payload.left.items, element.payload.right.title, ...element.payload.right.items];
-  const total = ordered.reduce((sum, text) => sum + countGraphemes(text), 0);
+  const lengths = ordered.map(countGraphemes);
+  const total = lengths.reduce((sum, length) => sum + length, 0);
   const revealed = Math.floor(total * Math.min(1, Math.max(0, progress)));
-  let cursor = 0;
-  const next = (text: string) => {
-    const length = countGraphemes(text);
-    const localVisible = Math.min(length, Math.max(0, revealed - cursor));
-    cursor += length;
-    return revealText(text, length ? localVisible / length : 1);
-  };
-  const leftTitle = next(element.payload.left.title);
-  const leftItems = element.payload.left.items.map(next);
-  const rightTitle = next(element.payload.right.title);
-  const rightItems = element.payload.right.items.map(next);
+  const visible = ordered.map((text, index) => {
+    const start = lengths.slice(0, index).reduce((sum, length) => sum + length, 0);
+    const localVisible = Math.min(lengths[index], Math.max(0, revealed - start));
+    return revealText(text, lengths[index] ? localVisible / lengths[index] : 1);
+  });
+  const leftTitle = visible[0];
+  const leftItems = visible.slice(1, leftCount);
+  const rightTitle = visible[leftCount];
+  const rightItems = visible.slice(leftCount + 1);
 
   return (
     <section className="comparison handwritten-element" style={{ left: element.box.x, top: element.box.y, width: element.box.width, height: element.box.height }}>
@@ -29,7 +29,6 @@ function ComparisonRenderer({ element, progress }: { element: ComparisonLayoutEl
     </section>
   );
 }
-
 export function renderLayoutElement(element: LayoutElement, progress: Record<string, number>) {
   if (element.kind === "question") return <QuestionHeader key={element.id} element={element} />;
   if (element.kind === "title") return <TitleRenderer key={element.id} element={element} progress={progress[`${element.id}:text`] ?? 0} />;

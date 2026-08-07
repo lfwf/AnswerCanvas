@@ -85,16 +85,21 @@ export function RecreationStage({ scene }: { scene: RecreationScene }) {
     });
     player.setSpeed(speedRef.current);
     playerRef.current = player;
-    if (reducedMotion) {
-      setProgress(Object.fromEntries(events.map((event) => [event.id, 1])));
-      setStatus("complete");
-      return () => { active = false; player.pause(); if (playerRef.current === player) playerRef.current = null; };
-    }
-    setProgress({});
-    setStatus("idle");
-    const startTimer = window.setTimeout(() => { if (!active) return; player.play(); setStatus("playing"); }, 350);
+    let startTimer = 0;
+    const setupTimer = window.setTimeout(() => {
+      if (!active) return;
+      if (reducedMotion) {
+        setProgress(Object.fromEntries(events.map((event) => [event.id, 1])));
+        setStatus("complete");
+        return;
+      }
+      setProgress({});
+      setStatus("idle");
+      startTimer = window.setTimeout(() => { if (!active) return; player.play(); setStatus("playing"); }, 350);
+    }, 0);
     return () => {
       active = false;
+      window.clearTimeout(setupTimer);
       window.clearTimeout(startTimer);
       player.pause();
       if (playerRef.current === player) playerRef.current = null;

@@ -24,14 +24,16 @@ function assertScene(scene: RecreationScene, knownIds: Set<string>) {
   const elementIds = new Set<string>();
   const orders = new Set<number>();
   for (const element of scene.elements) {
-    if (!element.id) throw new Error(`Scene ${scene.id} contains an empty element id`);
-    if (elementIds.has(element.id)) throw new Error(`Scene ${scene.id} contains duplicate element id: ${element.id}`);
-    elementIds.add(element.id);
+    const elementId = element.id;
+    if (!elementId) throw new Error(`Scene ${scene.id} contains an empty element id`);
+    if (elementIds.has(elementId)) throw new Error(`Scene ${scene.id} contains duplicate element id: ${elementId}`);
+    elementIds.add(elementId);
     if (isStaticElement(element)) {
-      if ("order" in element && element.order !== undefined) throw new Error(`Static element ${scene.id}/${element.id} must not define order`);
+      const order = (element as { order?: unknown }).order;
+      if (order !== undefined) throw new Error(`Static element ${scene.id}/${elementId} must not define order`);
       continue;
     }
-    if (!isAnimatedElement(element) || !Number.isFinite(element.order) || element.order < 0) throw new Error(`Animated element ${scene.id}/${element.id} has invalid order`);
+    if (!isAnimatedElement(element) || !Number.isFinite(element.order) || element.order < 0) throw new Error(`Animated element ${scene.id}/${elementId} has invalid order`);
     if (orders.has(element.order)) throw new Error(`Scene ${scene.id} contains duplicate dynamic order: ${element.order}`);
     orders.add(element.order);
   }

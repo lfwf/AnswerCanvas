@@ -14,12 +14,14 @@ export function validateRecreationScene(scene: RecreationScene): string[] {
   const orders = new Set<number>();
   const texts = new Map<string, RecreationText>();
   for (const element of scene.elements) {
-    if (ids.has(element.id)) issues.push(`duplicate element id: ${element.id}`);
-    ids.add(element.id);
+    const elementId = element.id;
+    if (ids.has(elementId)) issues.push(`duplicate element id: ${elementId}`);
+    ids.add(elementId);
     if (isStaticElement(element)) {
-      if ("order" in element && element.order !== undefined) issues.push(`static element ${element.id} must not define order`);
+      const order = (element as { order?: unknown }).order;
+      if (order !== undefined) issues.push(`static element ${elementId} must not define order`);
     } else if (isAnimatedElement(element)) {
-      if (!Number.isFinite(element.order) || element.order < 0) issues.push(`element ${element.id} has invalid order`);
+      if (!Number.isFinite(element.order) || element.order < 0) issues.push(`element ${elementId} has invalid order`);
       else if (orders.has(element.order)) issues.push(`duplicate dynamic order: ${element.order}`);
       else orders.add(element.order);
     }

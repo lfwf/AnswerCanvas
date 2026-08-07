@@ -23,18 +23,17 @@ function GraphemeText({ text, visible, offset = 0 }: { text: string; visible: nu
 
 function HandwrittenLines({ lines, progress }: { lines: string[]; progress: number }) {
   const graphemeLines = lines.map(splitGraphemes);
-  const total = graphemeLines.reduce((sum, line) => sum + line.length, 0);
+  const lengths = graphemeLines.map((line) => line.length);
+  const total = lengths.reduce((sum, length) => sum + length, 0);
   const revealed = visibleCount(total, progress);
-  let cursor = 0;
+  const offsets = lengths.map((_, index) => lengths.slice(0, index).reduce((sum, length) => sum + length, 0));
   return <>{lines.map((line, index) => {
-    const length = graphemeLines[index].length;
-    const lineVisible = Math.min(length, Math.max(0, revealed - cursor));
-    const start = cursor;
-    cursor += length;
+    const length = lengths[index];
+    const start = offsets[index];
+    const lineVisible = Math.min(length, Math.max(0, revealed - start));
     return <div className="handwritten-line" key={index}><GraphemeText text={line} visible={lineVisible} offset={start} />{lineVisible === 0 ? "\u00a0" : null}</div>;
   })}</>;
 }
-
 export function revealText(text: string, progress: number): string {
   const graphemes = splitGraphemes(text);
   return graphemes.slice(0, visibleCount(graphemes.length, progress)).join("");
@@ -63,20 +62,20 @@ export function TextRenderer({ element, progress, targetProgress }: { element: T
 }
 
 export function ListRenderer({ element, progress, targetProgress }: { element: ListLayoutElement; progress: number; targetProgress: Record<string, number> }) {
-  const entries = element.payload.items.flatMap((item) => item.lines.map((line) => ({ itemId: item.id, line, length: splitGraphemes(line).length })));
-  const total = entries.reduce((sum, entry) => sum + entry.length, 0);
+  const lineLengths = element.payload.items.map((item) => item.lines.map((line) => splitGraphemes(line).length));
+  const itemLengths = lineLengths.map((lengths) => lengths.reduce((sum, length) => sum + length, 0));
+  const total = itemLengths.reduce((sum, length) => sum + length, 0);
   const revealed = visibleCount(total, progress);
-  let cursor = 0;
+  const itemOffsets = itemLengths.map((_, index) => itemLengths.slice(0, index).reduce((sum, length) => sum + length, 0));
   return (
     <section className="note-list handwritten-element" style={{ left: element.box.x, top: element.box.y, width: element.box.width, height: element.box.height, transform: `rotate(${element.jitter.rotate}deg) translateY(${element.jitter.offsetY}px)` }}>
       <div className="reveal-mask" data-target-id={`${element.id}:text`}>
-        {element.payload.items.map((item) => {
-          const itemStart = cursor;
+        {element.payload.items.map((item, itemIndex) => {
+          const itemStart = itemOffsets[itemIndex];
           const renderedLines = item.lines.map((line, lineIndex) => {
-            const length = splitGraphemes(line).length;
-            const lineVisible = Math.min(length, Math.max(0, revealed - cursor));
-            const start = cursor;
-            cursor += length;
+            const length = lineLengths[itemIndex][lineIndex];
+            const start = itemStart + lineLengths[itemIndex].slice(0, lineIndex).reduce((sum, current) => sum + current, 0);
+            const lineVisible = Math.min(length, Math.max(0, revealed - start));
             return <div className="handwritten-line" key={`${item.id}-${lineIndex}`}><GraphemeText text={line} visible={lineVisible} offset={start} />{lineVisible === 0 ? "\u00a0" : null}</div>;
           });
           const started = revealed > itemStart;
