@@ -26,13 +26,6 @@ export function PageSnapshotPanel({ scene, ready }: { scene: RecreationScene; re
   const shouldRenderSource = ready && state !== "ready" && state !== "error";
 
   useEffect(() => {
-    generatedSceneRef.current = null;
-    setSnapshots([]);
-    setState("idle");
-    setOpen(false);
-  }, [scene.id]);
-
-  useEffect(() => {
     if (!ready || !pages.length || generatedSceneRef.current === scene.id) return;
     generatedSceneRef.current = scene.id;
     let cancelled = false;
