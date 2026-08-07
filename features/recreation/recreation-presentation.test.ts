@@ -15,20 +15,26 @@ const scene: RecreationScene = {
     { id: "sentence", kind: "text", order: 1, x: 10, y: 20, width: 180, text: "Although I was tired" },
     { id: "notes", kind: "text", order: 2, x: 10, y: 70, width: 180, text: "notes" },
     { id: "focus", kind: "view", order: 3, mode: "focus", targetIds: ["sentence"], dimOpacity: 0.1 },
-    { id: "restore", kind: "view", order: 4, mode: "restore" },
+    { id: "new-analysis", kind: "text", order: 4, x: 10, y: 90, width: 180, text: "new analysis" },
+    { id: "restore", kind: "view", order: 5, mode: "restore" },
   ],
 };
 
 const sentence = scene.elements[1];
 const notes = scene.elements[2];
 const frame = scene.elements[0];
+const newAnalysis = scene.elements[4];
 
 describe("presentationOpacityFor", () => {
-  it("fades non-target content while preserving focus targets and static paper structure", () => {
+  it("fades earlier non-target content while preserving focus targets and static paper structure", () => {
     const progress = { focus: 1 };
     expect(presentationOpacityFor(sentence, scene, progress)).toBe(1);
     expect(presentationOpacityFor(notes, scene, progress)).toBeCloseTo(0.1);
     expect(presentationOpacityFor(frame, scene, progress)).toBe(1);
+  });
+
+  it("keeps content created after the active focus event visible", () => {
+    expect(presentationOpacityFor(newAnalysis, scene, { focus: 1 })).toBe(1);
   });
 
   it("interpolates focus transitions instead of popping visibility", () => {
