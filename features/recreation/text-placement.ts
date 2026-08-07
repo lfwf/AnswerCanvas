@@ -14,12 +14,12 @@ export function resolveTextPlacement(element: RecreationText, paper: RecreationP
   const left = element.x + (style?.nudgeX ?? 0);
   let top = element.y + (style?.nudgeY ?? 0);
   let lineHeight = style?.lineHeight;
-  if (paper.pattern === "ruled" && style?.snapToRule) {
+  if (paper.pattern === "ruled" && style?.snapToRule !== false) {
     const spacing = paper.spacing;
     const offset = paper.patternOffset ?? spacing;
-    const fontSize = style.fontSize ?? 17;
+    const fontSize = style?.fontSize ?? 17;
     const naturalLineHeight = lineHeight ?? Math.round(fontSize * 1.65);
-    const baselineWithinLine = style.baselineShift ?? Math.min(naturalLineHeight * 0.78, fontSize * 1.08);
+    const baselineWithinLine = style?.baselineShift ?? Math.min(naturalLineHeight * 0.78, fontSize * 1.08);
     const estimatedBaseline = top + baselineWithinLine;
     const snappedBaseline = offset + Math.round((estimatedBaseline - offset) / spacing) * spacing;
     top += clamp(snappedBaseline - estimatedBaseline, -spacing * 0.46, spacing * 0.46);
