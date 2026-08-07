@@ -194,7 +194,7 @@ export function RecreationStage({ scene, history = [] }: { scene: RecreationScen
             <div className="assistant-identity"><span className="assistant-avatar">AC</span><div><strong>AnswerCanvas</strong><span>{statusLabel}</span></div></div>
             <nav className="answer-controls" aria-label="播放控制">
               {scene.pages?.length ? <span className="page-indicator">{Math.max(1, pageIndex + 1)}/{scene.pages.length}</span> : null}
-              <PageSnapshotPanel scene={scene} ready={fontsReady} />
+              <PageSnapshotPanel scene={scene} ready={fontsReady && status === "complete"} />
               <button type="button" onClick={togglePlay} disabled={status === "complete" || !fontsReady}>{status === "playing" ? "暂停" : status === "complete" ? "完成" : "继续"}</button>
               <button type="button" onClick={replay} disabled={!fontsReady || reducedMotion}>重播</button>
               <select aria-label="播放速度" value={speed} onChange={(event) => changeSpeed(Number(event.target.value))}><option value="0.5">0.5x</option><option value="1">1x</option><option value="1.5">1.5x</option><option value="2">2x</option></select>
