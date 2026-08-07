@@ -3,7 +3,9 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { splitGraphemes } from "@/lib/text/graphemes";
 import { RecreationPlayer, type RecreationEvent } from "./recreation-player";
 import { drawableGraphemes, findGraphemeRange, mergeRectsByLine, type RecreationMarkSegment } from "./recreation-geometry";
-import type { RecreationElement, RecreationMark, RecreationScene, RecreationText } from "./recreation-types";
+import { buildHandDrawnBoxPasses, buildHandDrawnStrokePasses, type HandDrawnPass } from "./hand-drawn-path";
+import { characterTransform, resolveTextPlacement } from "./text-placement";
+import type { RecreationBox, RecreationElement, RecreationMark, RecreationScene, RecreationStroke, RecreationText } from "./recreation-types";
 import "@/features/paper/font.css";
 import "./recreation.css";
 
@@ -24,10 +26,11 @@ function useFontsReady() {
   const [ready, setReady] = useState(false);
   useEffect(() => {
     let cancelled = false;
-    const timeout = new Promise<void>((resolve) => window.setTimeout(resolve, 3000));
+    let timer = 0;
+    const timeout = new Promise<void>((resolve) => { timer = window.setTimeout(resolve, 3000); });
     const fonts = typeof document !== "undefined" && "fonts" in document ? document.fonts.ready.then(() => undefined, () => undefined) : Promise.resolve();
     Promise.race([fonts, timeout]).then(() => { if (!cancelled) setReady(true); });
-    return () => { cancelled = true; };
+    return () => { cancelled = true; window.clearTimeout(timer); };
   }, []);
   return ready;
 }
@@ -41,36 +44,39 @@ function unitsFor(element: RecreationElement) {
 function durationFor(element: RecreationElement) {
   if (element.kind === "text") return Math.max(260, unitsFor(element) * 58);
   if (element.kind === "mark") return Math.max(300, unitsFor(element) * 32);
-  return 560;
+  if (element.kind === "box") return element.handDrawn === false ? 620 : 1180;
+  return element.handDrawn === false ? 520 : 760;
 }
 
 function classForUnit(unit: string) {
   return /[A-Za-z0-9]/u.test(unit) ? "recreation-char latin-handwritten" : "recreation-char";
 }
 
-function TextElement({ element, progress }: { element: RecreationText; progress: number }) {
+function TextElement({ element, progress, scene }: { element: RecreationText; progress: number; scene: RecreationScene }) {
   const total = drawableGraphemes(element.text).length;
   const visible = Math.floor(total * Math.min(1, Math.max(0, progress)));
+  const placement = resolveTextPlacement(element, scene.paper);
   let graphemeIndex = 0;
   const style = {
-    left: element.x,
-    top: element.y,
+    left: placement.left,
+    top: placement.top,
     width: element.width,
     height: element.height,
     color: element.style?.color,
     fontSize: element.style?.fontSize,
-    lineHeight: element.style?.lineHeight ? `${element.style.lineHeight}px` : undefined,
+    lineHeight: placement.lineHeight ? `${placement.lineHeight}px` : element.style?.lineHeight ? `${element.style.lineHeight}px` : undefined,
     fontWeight: element.style?.fontWeight,
     textAlign: element.style?.textAlign,
     letterSpacing: element.style?.letterSpacing,
     transform: element.style?.rotate ? `rotate(${element.style.rotate}deg)` : undefined,
   } as React.CSSProperties;
+  const jitter = element.style?.characterJitter ?? 0.72;
   return <div className="recreation-text" data-text-id={element.id} style={style} aria-label={element.text}>
     {element.text.split(/\r?\n/u).map((line, lineIndex) => <div className="recreation-line" key={`${element.id}:line:${lineIndex}`}>
       {splitGraphemes(line).map((unit) => {
         const index = graphemeIndex++;
         const isVisible = index < visible;
-        return <span className={classForUnit(unit)} data-grapheme-index={index} key={`${element.id}:${index}`} style={{ visibility: isVisible ? "visible" : "hidden" }} aria-hidden="true">{unit === " " ? "\u00a0" : unit}</span>;
+        return <span className={classForUnit(unit)} data-grapheme-index={index} key={`${element.id}:${index}`} style={{ visibility: isVisible ? "visible" : "hidden", transform: unit.trim() ? characterTransform(element.id, index, jitter) : undefined }} aria-hidden="true">{unit === " " ? "\u00a0" : unit}</span>;
       })}
       {!line && <span aria-hidden="true">\u00a0</span>}
     </div>)}
@@ -91,19 +97,32 @@ function MarkPaths({ mark, segments, progress }: { mark: RecreationMark; segment
     const x2 = segment.x + segment.width + padding;
     const centerY = segment.y + segment.height * 0.53;
     if (mark.mark === "circle") {
-      return <ellipse key={`${mark.id}:${index}`} cx={segment.x + segment.width / 2} cy={segment.y + segment.height / 2} rx={segment.width / 2 + padding * 2} ry={segment.height / 2 + padding} fill="none" stroke={color} strokeWidth={mark.width ?? 1.8} strokeOpacity={(mark.opacity ?? 1) * value} pathLength="1" strokeDasharray="1" strokeDashoffset={1 - value} />;
+      return <ellipse key={`${mark.id}:${index}`} cx={segment.x + segment.width / 2} cy={segment.y + segment.height / 2} rx={segment.width / 2 + padding * 2} ry={segment.height / 2 + padding} fill="none" stroke={color} strokeWidth={mark.width ?? 1.8} strokeOpacity={(mark.opacity ?? 1) * value} pathLength="1" strokeDasharray="1" strokeDashoffset={1 - value} strokeLinecap="round" />;
     }
-    const y = mark.mark === "underline" ? segment.y + segment.height + (mark.offset ?? 1) : mark.mark === "strike" ? centerY + (mark.offset ?? 0) : centerY + (mark.offset ?? 0);
+    const y = mark.mark === "underline" ? segment.y + segment.height + (mark.offset ?? 1) : centerY + (mark.offset ?? 0);
     return <path key={`${mark.id}:${index}`} d={`M ${x1} ${y} Q ${(x1 + x2) / 2} ${y + (index % 2 ? -wobble : wobble)} ${x2} ${y}`} fill="none" stroke={color} strokeWidth={mark.width ?? (mark.mark === "highlight" ? Math.max(8, segment.height * .55) : 1.8)} strokeOpacity={(mark.opacity ?? 1) * value} strokeLinecap="round" pathLength="1" strokeDasharray="1" strokeDashoffset={1 - value} />;
   })}</>;
 }
+
+function DrawnPasses({ element, passes, progress, color, width, opacity, dash, fill }: { element: RecreationStroke | RecreationBox; passes: HandDrawnPass[]; progress: number; color: string; width: number; opacity: number; dash?: string; fill?: string }) {
+  return <g>{passes.map((pass, index) => {
+    const value = segmentProgress(progress, index, passes.length);
+    const canRevealByLength = !dash;
+    return <path key={pass.id} d={pass.path} fill={index === 0 && progress >= 1 ? (fill ?? "none") : "none"} stroke={color} strokeWidth={width * pass.widthScale} strokeOpacity={opacity * pass.opacity * (canRevealByLength ? 1 : value)} strokeDasharray={dash ?? "1"} strokeDashoffset={canRevealByLength ? 1 - value : undefined} pathLength={canRevealByLength ? 1 : undefined} strokeLinecap="round" strokeLinejoin="round" data-drawn-element={element.id} />;
+  })}</g>;
+}
+
+const strokePassCache = new WeakMap<RecreationStroke, HandDrawnPass[]>();
+const boxPassCache = new WeakMap<RecreationBox, HandDrawnPass[]>();
+function strokePasses(element: RecreationStroke) { const cached = strokePassCache.get(element); if (cached) return cached; const passes = buildHandDrawnStrokePasses(element); strokePassCache.set(element, passes); return passes; }
+function boxPasses(element: RecreationBox) { const cached = boxPassCache.get(element); if (cached) return cached; const passes = buildHandDrawnBoxPasses(element); boxPassCache.set(element, passes); return passes; }
 
 function SvgElements({ scene, elements, progress, markGeometry }: { scene: RecreationScene; elements: RecreationElement[]; progress: Record<string, number>; markGeometry: Record<string, RecreationMarkSegment[]> }) {
   return <svg className="recreation-ink" viewBox={`0 0 ${scene.width} ${scene.height}`} aria-hidden="true">
     {elements.map((element) => {
       const value = progress[element.id] ?? 0;
-      if (element.kind === "stroke") return <path key={element.id} d={element.path} pathLength="1" fill="none" stroke={element.color ?? "#171717"} strokeWidth={element.width ?? 1.4} strokeOpacity={(element.opacity ?? 1) * value} strokeDasharray={element.dash ?? "1"} strokeDashoffset={element.dash ? undefined : 1 - value} strokeLinecap="round" strokeLinejoin="round" />;
-      if (element.kind === "box") return <rect key={element.id} x={element.x} y={element.y} width={element.width} height={element.height} rx={element.radius ?? 0} fill={value >= 1 ? (element.fill ?? "none") : "none"} stroke={element.stroke ?? "#171717"} strokeOpacity={value} strokeWidth={element.strokeWidth ?? 1.4} strokeDasharray={element.dash ?? "1"} strokeDashoffset={element.dash ? undefined : 1 - value} pathLength="1" />;
+      if (element.kind === "stroke") return <DrawnPasses key={element.id} element={element} passes={strokePasses(element)} progress={value} color={element.color ?? "#171717"} width={element.width ?? 1.4} opacity={element.opacity ?? 1} dash={element.dash} />;
+      if (element.kind === "box") return <DrawnPasses key={element.id} element={element} passes={boxPasses(element)} progress={value} color={element.stroke ?? "#171717"} width={element.strokeWidth ?? 1.4} opacity={1} dash={element.dash} fill={element.fill} />;
       if (element.kind === "mark") return <MarkPaths key={element.id} mark={element} segments={markGeometry[element.id] ?? []} progress={value} />;
       return null;
     })}
@@ -116,6 +135,7 @@ export function RecreationStage({ scene }: { scene: RecreationScene }) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLElement>(null);
   const playerRef = useRef<RecreationPlayer | null>(null);
+  const speedRef = useRef(1);
   const [progress, setProgress] = useState<Record<string, number>>({});
   const [markGeometry, setMarkGeometry] = useState<Record<string, RecreationMarkSegment[]>>({});
   const [scale, setScale] = useState(0.7);
@@ -169,7 +189,7 @@ export function RecreationStage({ scene }: { scene: RecreationScene }) {
       onProgress: (event, value) => setProgress((current) => ({ ...current, [event.id]: value })),
       onComplete: () => setStatus("complete"),
     });
-    player.setSpeed(speed);
+    player.setSpeed(speedRef.current);
     playerRef.current = player;
     if (reducedMotion) {
       const complete: Record<string, number> = {};
@@ -198,16 +218,26 @@ export function RecreationStage({ scene }: { scene: RecreationScene }) {
     setStatus("playing");
   }, []);
 
-  const changeSpeed = useCallback((next: number) => { setSpeed(next); playerRef.current?.setSpeed(next); }, []);
+  const changeSpeed = useCallback((next: number) => { speedRef.current = next; setSpeed(next); playerRef.current?.setSpeed(next); }, []);
+  const paperStyle = {
+    width: scene.width,
+    height: scene.height,
+    transform: `scale(${scale})`,
+    "--paper-bg": scene.paper?.background ?? "#faf9ee",
+    "--rule-color": scene.paper?.ruleColor ?? "rgba(84,113,139,.16)",
+    "--rule-spacing": `${scene.paper?.ruleSpacing ?? 31}px`,
+    "--rule-thickness": `${scene.paper?.ruleThickness ?? 1}px`,
+    "--rule-offset": `${scene.paper?.ruleOffset ?? 30}px`,
+  } as React.CSSProperties;
 
   return <main className="recreation-shell">
     <header className="recreation-brand" aria-label="AnswerCanvas"><div className="brand-mark">AC</div><div><h1>AnswerCanvas</h1><p>Codex image recreation</p></div></header>
     <aside className="recreation-handoff"><strong>图片转手写</strong><span>把图片发给 Codex，说“转成手写”，它会更新当前复刻场景。</span><small>{scene.sourceName}</small></aside>
     <section className="recreation-viewport" ref={viewportRef} aria-label="手写复刻画布">
       <div className="recreation-paper-shell" style={{ width: scene.width * scale, height: scene.height * scale }}>
-        <article ref={paperRef} className="recreation-paper" style={{ width: scene.width, height: scene.height, transform: `scale(${scale})` }}>
+        <article ref={paperRef} className="recreation-paper" style={paperStyle}>
           <SvgElements scene={scene} elements={elements} progress={progress} markGeometry={markGeometry} />
-          {elements.filter((element): element is RecreationText => element.kind === "text").map((element) => <TextElement key={element.id} element={element} progress={progress[element.id] ?? 0} />)}
+          {elements.filter((element): element is RecreationText => element.kind === "text").map((element) => <TextElement key={element.id} element={element} progress={progress[element.id] ?? 0} scene={scene} />)}
         </article>
       </div>
     </section>
