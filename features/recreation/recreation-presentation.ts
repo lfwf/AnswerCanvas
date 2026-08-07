@@ -14,7 +14,8 @@ export function presentationOpacityFor(element: RecreationElement, scene: Recrea
   for (const effect of viewEffects(scene)) {
     const value = easeInOut(progress?.[effect.id] ?? 0);
     if (value <= 0) continue;
-    const targetOpacity = effect.mode === "restore" || effect.targetIds?.includes(element.id) ? 1 : clamp01(effect.dimOpacity ?? 0.08);
+    const createdAfterFocus = element.order > effect.order;
+    const targetOpacity = effect.mode === "restore" || createdAfterFocus || effect.targetIds?.includes(element.id) ? 1 : clamp01(effect.dimOpacity ?? 0.08);
     opacity += (targetOpacity - opacity) * value;
   }
   return clamp01(opacity);
