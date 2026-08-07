@@ -23,6 +23,7 @@ export function PageSnapshotPanel({ scene, ready }: { scene: RecreationScene; re
   const [state, setState] = useState<"idle" | "generating" | "ready" | "error">("idle");
   const [open, setOpen] = useState(false);
   const pages = scene.pages ?? [];
+  const shouldRenderSource = ready && state !== "ready" && state !== "error";
 
   useEffect(() => {
     if (!ready || !pages.length || generatedSceneRef.current === scene.id) return;
@@ -70,11 +71,11 @@ export function PageSnapshotPanel({ scene, ready }: { scene: RecreationScene; re
       {state === "generating" ? "生成截图…" : state === "error" ? "截图失败" : state === "ready" ? `最终截图 ${snapshots.length}` : "首轮结束后截图"}
     </button>
 
-    <div className="page-snapshot-source" ref={sourceRef} aria-hidden="true">
+    {shouldRenderSource ? <div className="page-snapshot-source" ref={sourceRef} aria-hidden="true">
       {pages.map((page) => <div className="snapshot-capture-page answer-canvas-viewport is-paged-video" data-snapshot-page-id={page.id} key={page.id}>
         <RecreationCanvas scene={scene} completed pageId={page.id} />
       </div>)}
-    </div>
+    </div> : null}
 
     {open && state === "ready" ? <div className="snapshot-modal" role="dialog" aria-modal="true" aria-label="每页最终截图">
       <div className="snapshot-modal-card">
