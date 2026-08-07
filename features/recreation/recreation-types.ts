@@ -1,4 +1,4 @@
-export type RecreationElement = RecreationText | RecreationStroke | RecreationBox | RecreationMark | RecreationAnnotation | RecreationViewEffect;
+export type RecreationElement = RecreationText | RecreationStroke | RecreationBox | RecreationMark | RecreationAnnotation | RecreationViewEffect | RecreationPageTurn;
 export type RecreationAnimatedElement = RecreationElement & { animated?: true; order: number };
 export type RecreationStaticElement = RecreationElement & { animated: false; order?: never };
 
@@ -6,12 +6,14 @@ export interface RecreationDynamicMeta {
   id: string;
   animated?: true;
   order: number;
+  pageId?: string;
 }
 
 export interface RecreationStaticMeta {
   id: string;
   animated: false;
   order?: never;
+  pageId?: string;
 }
 
 export type RecreationElementMeta = RecreationDynamicMeta | RecreationStaticMeta;
@@ -23,6 +25,11 @@ export interface RecreationPaperStyle {
   spacing: number;
   patternOffset?: number;
   patternThickness?: number;
+}
+
+export interface RecreationPage {
+  id: string;
+  title: string;
 }
 
 export interface RecreationTextStyle {
@@ -115,6 +122,13 @@ export type RecreationViewEffect = RecreationDynamicMeta & {
   durationMs?: number;
 };
 
+export type RecreationPageTurn = RecreationDynamicMeta & {
+  kind: "page";
+  pageId: string;
+  durationMs?: number;
+  transition?: "slide" | "fade";
+};
+
 export interface RecreationScene {
   id: string;
   title: string;
@@ -125,6 +139,7 @@ export interface RecreationScene {
   width: number;
   height: number;
   paper: RecreationPaperStyle;
+  pages?: RecreationPage[];
   elements: RecreationElement[];
 }
 

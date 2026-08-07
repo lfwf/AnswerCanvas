@@ -13,6 +13,7 @@ vi.mock("./RecreationCanvas", () => ({
 describe("SceneGallery", () => {
   it("shows all registered scenes and links to canonical URLs", () => {
     render(<SceneGallery scenes={listScenes()} />);
+    expect(screen.getByRole("link", { name: /iPhone 18 Pro 爆料参数/ })).toHaveAttribute("href", "/scenes/iphone18-pro-rumors-video");
     expect(screen.getByRole("link", { name: /长句分析练习/ })).toHaveAttribute("href", "/scenes/long-sentence-analysis-practice");
     expect(screen.getByRole("link", { name: /长句语法沉浸式分析/ })).toHaveAttribute("href", "/scenes/immersive-grammar-analysis");
     expect(screen.getByRole("link", { name: /未来3年，最需要 AI 能力的岗位/ })).toHaveAttribute("href", "/scenes/future-ai-jobs");
@@ -23,7 +24,7 @@ describe("SceneGallery", () => {
   it("uses completed canvases without player controls", () => {
     const { container } = render(<SceneGallery scenes={listScenes()} />);
     const canvases = container.querySelectorAll("[data-scene-id]");
-    expect(canvases).toHaveLength(5);
+    expect(canvases).toHaveLength(6);
     expect([...canvases].every((canvas) => canvas.getAttribute("data-completed") === "true")).toBe(true);
     expect(screen.queryByRole("button", { name: "重播" })).toBeNull();
     expect(container.querySelector(".recreation-toolbar")).toBeNull();

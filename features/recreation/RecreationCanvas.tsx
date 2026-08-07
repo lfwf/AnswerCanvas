@@ -15,6 +15,7 @@ export interface RecreationCanvasProps {
   scene: RecreationScene;
   progress?: Record<string, number>;
   completed?: boolean;
+  pageId?: string;
 }
 
 interface AnnotationAnchor { x: number; y: number; width: number; height: number; }
@@ -126,11 +127,12 @@ function SvgElements({ scene, elements, progress, completed, markGeometry }: { s
   </svg>;
 }
 
-export function RecreationCanvas({ scene, progress, completed = false }: RecreationCanvasProps) {
+export function RecreationCanvas({ scene, progress, completed = false, pageId }: RecreationCanvasProps) {
   const paperRef = useRef<HTMLElement>(null);
   const [markGeometry, setMarkGeometry] = useState<Record<string, RecreationMarkSegment[]>>({});
   const [annotationGeometry, setAnnotationGeometry] = useState<Record<string, AnnotationAnchor>>({});
-  const elements = useMemo(() => scene.elements, [scene.elements]);
+  const resolvedPageId = pageId ?? scene.pages?.[0]?.id;
+  const elements = useMemo(() => scene.elements.filter((element) => element.kind !== "page" && (!resolvedPageId || !element.pageId || element.pageId === resolvedPageId)), [resolvedPageId, scene.elements]);
 
   useLayoutEffect(() => {
     const paper = paperRef.current;
@@ -190,7 +192,7 @@ export function RecreationCanvas({ scene, progress, completed = false }: Recreat
     "--paper-pattern-thickness": `${scene.paper.patternThickness ?? 1}px`,
   } as React.CSSProperties;
 
-  return <article ref={paperRef} className={`recreation-paper recreation-paper--${scene.paper.pattern}`} style={paperStyle} data-scene-id={scene.id}>
+  return <article ref={paperRef} className={`recreation-paper recreation-paper--${scene.paper.pattern}`} style={paperStyle} data-scene-id={scene.id} data-page-id={resolvedPageId}>
     <SvgElements scene={scene} elements={elements} progress={progress} completed={completed} markGeometry={markGeometry} />
     {elements.filter((element): element is RecreationText => element.kind === "text").map((element) => <TextElement key={element.id} element={element} progress={valueFor(element, progress, completed)} opacity={presentationOpacityFor(element, scene, progress, completed)} scene={scene} />)}
     {elements.filter((element): element is RecreationAnnotation => element.kind === "annotation").map((element) => <AnnotationElement key={element.id} element={element} progress={valueFor(element, progress, completed)} anchor={annotationGeometry[element.id]} opacity={presentationOpacityFor(element, scene, progress, completed)} />)}

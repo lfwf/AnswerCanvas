@@ -1,14 +1,16 @@
 import { aiCoreConceptsScene } from "./scenes/ai-core-concepts";
 import { immersiveGrammarAnalysisScene } from "./scenes/immersive-grammar-analysis";
+import { iphone18ProRumorsVideoScene } from "./scenes/iphone18-pro-rumors-video";
 import { skillAgentNotesScene } from "./scenes/skill-agent-notes";
 import type { RecreationAnnotation, RecreationMark, RecreationScene, RecreationViewEffect } from "./recreation-types";
 import { validateRecreationScene } from "./validate-recreation-scene";
 
 describe("validateRecreationScene", () => {
-  it("accepts registered recreation scenes including immersive analysis", () => {
+  it("accepts registered recreation scenes including immersive analysis and paged video", () => {
     expect(validateRecreationScene(skillAgentNotesScene)).toEqual([]);
     expect(validateRecreationScene(aiCoreConceptsScene)).toEqual([]);
     expect(validateRecreationScene(immersiveGrammarAnalysisScene)).toEqual([]);
+    expect(validateRecreationScene(iphone18ProRumorsVideoScene)).toEqual([]);
   });
 
   it("reports missing semantic mark targets", () => {
@@ -53,5 +55,14 @@ describe("validateRecreationScene", () => {
       elements: immersiveGrammarAnalysisScene.elements.map((element) => element.id === first.id ? { ...first, targetIds: [...(first.targetIds ?? []), "missing-element"] } : element),
     };
     expect(validateRecreationScene(broken).some((issue) => issue.includes("missing element"))).toBe(true);
+  });
+
+  it("reports elements and page turns that reference missing pages", () => {
+    const broken: RecreationScene = {
+      ...iphone18ProRumorsVideoScene,
+      elements: iphone18ProRumorsVideoScene.elements.map((element) => element.id === "chip-bullets" ? { ...element, pageId: "missing-page" } : element.id === "turn-memory" ? { ...element, pageId: "missing-page" } : element),
+    };
+    const issues = validateRecreationScene(broken);
+    expect(issues.some((issue) => issue.includes("references missing page missing-page"))).toBe(true);
   });
 });
