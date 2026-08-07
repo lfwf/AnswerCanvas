@@ -96,6 +96,7 @@ export interface RecreationScene {
   id: string;
   title: string;
   description: string;
+  prompt?: string;
   sourceName: string;
   createdAt: string;
   width: number;
