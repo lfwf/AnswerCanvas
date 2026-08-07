@@ -1,0 +1,28 @@
+{
+  "sourceBlobSha": "e4cf55cf295a458ad059321f1915e7f3c2c1f639",
+  "legacySceneId": "photo-1-skill-agent-notes",
+  "width": 908,
+  "height": 1280,
+  "elementCount": 86,
+  "staticWhitelist": [
+    { "id": "page-frame", "kind": "box", "legacyOrder": 1, "x": 14, "y": 14, "width": 880, "height": 1248, "stroke": "rgba(20,20,20,.55)", "strokeWidth": 1.2 },
+    { "id": "header-rule-1", "kind": "stroke", "legacyOrder": 2, "path": "M 24 103 L 884 103", "color": "#171717", "width": 1.2 },
+    { "id": "header-rule-2", "kind": "stroke", "legacyOrder": 3, "path": "M 24 119 L 884 119", "color": "#171717", "width": 1.2 },
+    { "id": "table-top", "kind": "stroke", "legacyOrder": 4, "path": "M 14 137 L 894 137", "color": "#171717", "width": 1.4 },
+    { "id": "table-divider", "kind": "stroke", "legacyOrder": 5, "path": "M 220 137 L 220 1112", "color": "#171717", "width": 1.2 },
+    { "id": "summary-rule", "kind": "stroke", "legacyOrder": 6, "path": "M 14 1112 L 894 1112", "color": "#171717", "width": 1.2 }
+  ],
+  "dynamicSequence": [
+    ["date",7],["course",8],["topic",9],["page-number",10],["cue-heading",11],["notes-heading",12],
+    ["cue-skill",20],["skill-title",21],["skill-definition",22],["skill-core",23],["skill-points",24],["skill-example-box",25],["skill-example",26],
+    ["cue-agent",30],["agent-title",31],["agent-definition",32],["agent-core",33],["agent-points",34],["agent-environment",36],["agent-node",37],["agent-action",38],
+    ["agent-arrow-1",39],["agent-arrow-1-head-left",40],["agent-arrow-1-head-right",41],["agent-arrow-2",42],["agent-arrow-2-head-left",43],["agent-arrow-2-head-right",44],
+    ["agent-environment-label",45],["agent-sense-label",46],["agent-feedback-label",47],["agent-node-label",48],["agent-decision-label",49],["agent-action-label",50],
+    ["cue-relation",55],["relation-title",56],["relation-difference",57],["comparison-top",58],["comparison-mid-1",59],["comparison-mid-2",60],["comparison-mid-3",61],["comparison-mid-4",62],["comparison-bottom",63],["comparison-col-1",64],["comparison-col-2",65],
+    ["comparison-header-label",66],["comparison-header-skill",67],["comparison-header-agent",68],["comparison-row-property",69],["comparison-row-property-skill",70],["comparison-row-property-agent",71],
+    ["comparison-row-granularity",72],["comparison-row-granularity-skill",73],["comparison-row-granularity-agent",74],["comparison-row-focus",75],["comparison-row-focus-skill",76],["comparison-row-focus-agent",77],
+    ["comparison-row-autonomy",78],["comparison-row-autonomy-skill",79],["comparison-row-autonomy-agent",80],["comparison-row-example",81],["comparison-row-example-skill",82],["comparison-row-example-agent",83],["relation-summary",84],
+    ["summary-title",90],["summary",91],["summary-diagram-title",92],["summary-agent-icon",93],["summary-agent-label",94],["summary-skill-1",95],["summary-skill-2",96],["summary-skill-n",97],
+    ["summary-skill-1-label",98],["summary-skill-2-label",99],["summary-skill-n-label",100],["summary-arrow-1",101],["summary-arrow-1-head",102],["summary-arrow-2",103],["summary-arrow-2-head",104],["summary-arrow-3",105],["summary-arrow-3-head",106]
+  ]
+}

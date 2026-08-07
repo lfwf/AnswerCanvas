@@ -1,7 +1,6 @@
-"use client";
-import { RecreationStage } from "@/features/recreation/RecreationStage";
-import { currentRecreationScene } from "@/features/recreation/current-scene";
+import { SceneGallery } from "@/features/recreation/SceneGallery";
+import { listScenes } from "@/features/recreation/scene-registry";
 
 export default function HomePage() {
-  return <RecreationStage scene={currentRecreationScene} />;
+  return <SceneGallery scenes={listScenes()} />;
 }

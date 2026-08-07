@@ -22,16 +22,17 @@ export class RecreationPlayer {
   private completedEmitted = false;
 
   constructor(options: { events: RecreationEvent[]; onProgress(event: RecreationEvent, value: number): void; onComplete?: () => void; clock?: RecreationClock }) {
-    this.events = options.events;
+    this.events = options.events.map((event) => ({ ...event, durationMs: Math.max(1, event.durationMs) }));
     this.onProgress = options.onProgress;
     this.onComplete = options.onComplete;
     this.clock = options.clock ?? browserClock;
   }
 
   play() {
-    if (!this.events.length) { this.status = "complete"; this.onComplete?.(); return; }
+    if (!this.events.length) { this.finish(); return; }
     this.status = "playing";
     this.lastRealMs = this.clock.now();
+    this.onProgress(this.events[this.index], this.eventElapsedMs / this.events[this.index].durationMs);
     this.schedule();
   }
 
@@ -62,23 +63,27 @@ export class RecreationPlayer {
 
   private tick(realNow: number) {
     if (this.status !== "playing") return;
-    const delta = Math.max(0, realNow - this.lastRealMs);
+    const delta = Math.max(0, realNow - this.lastRealMs) * this.speed;
     this.lastRealMs = realNow;
-    this.eventElapsedMs += delta * this.speed;
-    const event = this.events[this.index];
-    if (this.eventElapsedMs >= event.durationMs) {
-      this.onProgress(event, 1);
+    this.eventElapsedMs += delta;
+
+    while (this.index < this.events.length && this.eventElapsedMs >= this.events[this.index].durationMs) {
+      const completed = this.events[this.index];
+      this.eventElapsedMs -= completed.durationMs;
+      this.onProgress(completed, 1);
       this.index += 1;
-      this.eventElapsedMs = 0;
+      if (this.index < this.events.length) this.onProgress(this.events[this.index], 0);
     }
-    if (this.index >= this.events.length) {
-      this.status = "complete";
-      this.unschedule();
-      if (!this.completedEmitted) { this.completedEmitted = true; this.onComplete?.(); }
-      return;
-    }
-    if (this.index !== this.events.findIndex((candidate) => candidate.id === event.id)) this.onProgress(this.events[this.index], 0);
-    else this.onProgress(event, this.eventElapsedMs / event.durationMs);
+
+    if (this.index >= this.events.length) { this.finish(); return; }
+    const current = this.events[this.index];
+    this.onProgress(current, Math.min(1, this.eventElapsedMs / current.durationMs));
     this.schedule();
+  }
+
+  private finish() {
+    this.status = "complete";
+    this.unschedule();
+    if (!this.completedEmitted) { this.completedEmitted = true; this.onComplete?.(); }
   }
 }

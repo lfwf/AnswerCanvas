@@ -1,9 +1,12 @@
 "use client";
+
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { splitGraphemes } from "@/lib/text/graphemes";
+import { drawableGraphemes } from "./recreation-geometry";
+import { RecreationCanvas } from "./RecreationCanvas";
 import { RecreationPlayer, type RecreationEvent } from "./recreation-player";
-import type { RecreationElement, RecreationScene, RecreationText } from "./recreation-types";
-import "@/features/paper/font.css";
+import type { RecreationAnimatedElement, RecreationScene } from "./recreation-types";
+import { isAnimatedElement } from "./recreation-types";
 import "./recreation.css";
 
 function useReducedMotion() {
@@ -19,89 +22,84 @@ function useReducedMotion() {
   return reduced;
 }
 
-function unitsFor(element: RecreationElement) {
-  return element.kind === "text" ? splitGraphemes(element.text).length : 1;
+function useFontsReady() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    let timer = 0;
+    const timeout = new Promise<void>((resolve) => { timer = window.setTimeout(resolve, 3000); });
+    const fonts = typeof document !== "undefined" && "fonts" in document ? document.fonts.ready.then(() => undefined, () => undefined) : Promise.resolve();
+    Promise.race([fonts, timeout]).then(() => { if (!cancelled) setReady(true); });
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, []);
+  return ready;
 }
 
-function durationFor(element: RecreationElement) {
-  return element.kind === "text" ? Math.max(420, unitsFor(element) * 38) : 560;
+function unitsFor(element: RecreationAnimatedElement) {
+  if (element.kind === "text") return drawableGraphemes(element.text).length;
+  if (element.kind === "mark") return Math.max(1, drawableGraphemes(element.match).length);
+  return 1;
 }
 
-function classForUnit(unit: string) {
-  return /[A-Za-z0-9]/u.test(unit) ? "recreation-char latin-handwritten" : "recreation-char";
+export function durationForElement(element: RecreationAnimatedElement) {
+  if (element.kind === "text") return Math.max(260, unitsFor(element) * 58);
+  if (element.kind === "mark") return Math.max(300, unitsFor(element) * 32);
+  if (element.kind === "box") return element.handDrawn === false ? 620 : 1180;
+  return element.handDrawn === false ? 520 : 760;
 }
 
-function TextElement({ element, progress }: { element: RecreationText; progress: number }) {
-  const units = splitGraphemes(element.text);
-  const visible = Math.floor(units.length * Math.min(1, Math.max(0, progress)));
-  const style = {
-    left: element.x,
-    top: element.y,
-    width: element.width,
-    height: element.height,
-    color: element.style?.color,
-    fontSize: element.style?.fontSize,
-    lineHeight: element.style?.lineHeight ? `${element.style.lineHeight}px` : undefined,
-    fontWeight: element.style?.fontWeight,
-    textAlign: element.style?.textAlign,
-    letterSpacing: element.style?.letterSpacing,
-    transform: element.style?.rotate ? `rotate(${element.style.rotate}deg)` : undefined,
-  } as React.CSSProperties;
-  return <div className="recreation-text" style={style} aria-label={element.text}>
-    {units.slice(0, visible).map((unit, index) => <span className={classForUnit(unit)} key={`${index}-${unit}`}>{unit === " " ? "\u00a0" : unit}</span>)}
-    {visible === 0 && "\u00a0"}
-  </div>;
-}
-
-function SvgElements({ elements, progress }: { elements: RecreationElement[]; progress: Record<string, number> }) {
-  return <svg className="recreation-ink" viewBox="0 0 908 1280" aria-hidden="true">
-    {elements.map((element) => {
-      const value = progress[element.id] ?? 0;
-      if (element.kind === "stroke") return <path key={element.id} d={element.path} pathLength="1" fill="none" stroke={element.color ?? "#171717"} strokeWidth={element.width ?? 1.4} strokeOpacity={(element.opacity ?? 1) * value} strokeDasharray={element.dash ?? "none"} strokeLinecap="round" strokeLinejoin="round" style={{ strokeDasharray: element.dash ? undefined : 1, strokeDashoffset: element.dash ? undefined : 1 - value }} />;
-      if (element.kind === "box") return <rect key={element.id} x={element.x} y={element.y} width={element.width} height={element.height} rx={element.radius ?? 0} fill={value >= 1 ? (element.fill ?? "none") : "none"} stroke={element.stroke ?? "#171717"} strokeOpacity={value} strokeWidth={element.strokeWidth ?? 1.4} strokeDasharray={element.dash ?? undefined} pathLength="1" style={{ strokeDasharray: element.dash ? undefined : 1, strokeDashoffset: element.dash ? undefined : 1 - value }} />;
-      return null;
-    })}
-  </svg>;
+export function timelineElements(scene: RecreationScene): RecreationAnimatedElement[] {
+  return scene.elements.filter(isAnimatedElement).sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
 }
 
 export function RecreationStage({ scene }: { scene: RecreationScene }) {
   const reducedMotion = useReducedMotion();
+  const fontsReady = useFontsReady();
   const viewportRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<RecreationPlayer | null>(null);
+  const speedRef = useRef(1);
   const [progress, setProgress] = useState<Record<string, number>>({});
   const [scale, setScale] = useState(0.7);
   const [status, setStatus] = useState<"idle" | "playing" | "paused" | "complete">("idle");
   const [speed, setSpeed] = useState(1);
-  const elements = useMemo(() => [...scene.elements].sort((a, b) => a.order - b.order), [scene.elements]);
-  const events = useMemo<RecreationEvent[]>(() => elements.map((element) => ({ id: element.id, durationMs: durationFor(element) })), [elements]);
+  const elements = useMemo(() => timelineElements(scene), [scene]);
+  const events = useMemo<RecreationEvent[]>(() => elements.map((element) => ({ id: element.id, durationMs: durationForElement(element) })), [elements]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(([entry]) => setScale(Math.min(1, Math.max(0.32, (entry.contentRect.width - 36) / scene.width))));
+    const update = (width: number) => setScale(Math.min(1, Math.max(0.28, (width - 36) / scene.width)));
+    update(viewport.clientWidth);
+    const observer = new ResizeObserver(([entry]) => update(entry.contentRect.width));
     observer.observe(viewport);
     return () => observer.disconnect();
   }, [scene.width]);
 
   useEffect(() => {
+    if (!fontsReady) return;
+    let active = true;
     const player = new RecreationPlayer({
       events,
-      onProgress: (event, value) => setProgress((current) => ({ ...current, [event.id]: value })),
-      onComplete: () => setStatus("complete"),
+      onProgress: (event, value) => { if (active) setProgress((current) => ({ ...current, [event.id]: value })); },
+      onComplete: () => { if (active) setStatus("complete"); },
     });
+    player.setSpeed(speedRef.current);
     playerRef.current = player;
     if (reducedMotion) {
-      const complete: Record<string, number> = {};
-      for (const event of events) complete[event.id] = 1;
-      setProgress(complete);
+      setProgress(Object.fromEntries(events.map((event) => [event.id, 1])));
       setStatus("complete");
-    } else {
-      setProgress({});
-      const startTimer = window.setTimeout(() => { player.play(); setStatus("playing"); }, 350);
-      return () => { window.clearTimeout(startTimer); player.pause(); };
+      return () => { active = false; player.pause(); if (playerRef.current === player) playerRef.current = null; };
     }
-    return () => player.pause();
-  }, [events, reducedMotion]);
+    setProgress({});
+    setStatus("idle");
+    const startTimer = window.setTimeout(() => { if (!active) return; player.play(); setStatus("playing"); }, 350);
+    return () => {
+      active = false;
+      window.clearTimeout(startTimer);
+      player.pause();
+      if (playerRef.current === player) playerRef.current = null;
+    };
+  }, [events, fontsReady, reducedMotion, scene.id]);
 
   const togglePlay = useCallback(() => {
     const player = playerRef.current;
@@ -111,36 +109,37 @@ export function RecreationStage({ scene }: { scene: RecreationScene }) {
   }, [status]);
 
   const replay = useCallback(() => {
-    if (!playerRef.current) return;
+    const player = playerRef.current;
+    if (!player) return;
     setProgress({});
-    playerRef.current.replay();
+    player.replay();
     setStatus("playing");
   }, []);
 
-  const changeSpeed = useCallback((next: number) => { setSpeed(next); playerRef.current?.setSpeed(next); }, []);
+  const changeSpeed = useCallback((next: number) => {
+    speedRef.current = next;
+    setSpeed(next);
+    playerRef.current?.setSpeed(next);
+  }, []);
 
   return <main className="recreation-shell">
     <header className="recreation-brand" aria-label="AnswerCanvas">
-      <div className="brand-mark">AC</div>
-      <div><h1>AnswerCanvas</h1><p>Codex image recreation</p></div>
+      <Link className="brand-mark" href="/" aria-label="返回场景列表">AC</Link>
+      <div><h1>AnswerCanvas</h1><p>{scene.title}</p></div>
     </header>
-    <aside className="recreation-handoff">
-      <strong>图片转手写</strong>
-      <span>把图片发给 Codex，说“转成手写”，它会更新当前复刻场景。</span>
-      <small>{scene.sourceName}</small>
-    </aside>
-    <section className="recreation-viewport" ref={viewportRef} aria-label="手写复刻画布">
+    <aside className="recreation-handoff"><strong>图片转手写</strong><span>发送新图片后会新增独立场景并保留已有场景。</span><small>{scene.sourceName}</small></aside>
+    <section className="recreation-viewport" ref={viewportRef} aria-label={`${scene.title} 手写复刻画布`}>
       <div className="recreation-paper-shell" style={{ width: scene.width * scale, height: scene.height * scale }}>
-        <article className="recreation-paper" style={{ width: scene.width, height: scene.height, transform: `scale(${scale})` }}>
-          <SvgElements elements={elements} progress={progress} />
-          {elements.filter((element): element is RecreationText => element.kind === "text").map((element) => <TextElement key={element.id} element={element} progress={progress[element.id] ?? 0} />)}
-        </article>
+        <div className="recreation-canvas-transform" style={{ width: scene.width, height: scene.height, transform: `scale(${scale})` }}>
+          <RecreationCanvas scene={scene} progress={progress} />
+        </div>
       </div>
     </section>
-    <div className="recreation-status">{status === "complete" ? "已完成" : status === "paused" ? "已暂停" : status === "playing" ? "正在书写" : "准备开始"}</div>
+    <div className="recreation-status">{!fontsReady ? "正在加载字体" : status === "complete" ? "已完成" : status === "paused" ? "已暂停" : status === "playing" ? "正在书写" : "准备开始"}</div>
     <nav className="recreation-toolbar" aria-label="播放控制">
-      <button type="button" onClick={togglePlay} disabled={status === "complete"}>{status === "playing" ? "暂停" : "继续"}</button>
-      <button type="button" onClick={replay}>重播</button>
+      <Link className="recreation-toolbar-link" href="/">场景列表</Link>
+      <button type="button" onClick={togglePlay} disabled={status === "complete" || !fontsReady}>{status === "playing" ? "暂停" : "继续"}</button>
+      <button type="button" onClick={replay} disabled={!fontsReady}>重播</button>
       <select aria-label="播放速度" value={speed} onChange={(event) => changeSpeed(Number(event.target.value))}><option value="0.5">0.5x</option><option value="1">1x</option><option value="1.5">1.5x</option><option value="2">2x</option></select>
     </nav>
   </main>;

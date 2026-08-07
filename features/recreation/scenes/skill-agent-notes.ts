@@ -1,27 +1,31 @@
-import type { RecreationBox, RecreationScene, RecreationStroke, RecreationText, RecreationTextStyle } from "./recreation-types";
+import type { RecreationBox, RecreationScene, RecreationStroke, RecreationText, RecreationTextStyle } from "../recreation-types";
 
 const text = (id: string, order: number, x: number, y: number, width: number, value: string, style: RecreationTextStyle = {}): RecreationText => ({ id, kind: "text", order, x, y, width, text: value, style });
-const stroke = (id: string, order: number, path: string, style: Omit<RecreationStroke, "id" | "kind" | "order" | "path"> = {}): RecreationStroke => ({ id, kind: "stroke", order, path, ...style });
-const box = (id: string, order: number, x: number, y: number, width: number, height: number, style: Omit<RecreationBox, "id" | "kind" | "order" | "x" | "y" | "width" | "height"> = {}): RecreationBox => ({ id, kind: "box", order, x, y, width, height, ...style });
+const stroke = (id: string, order: number, path: string, style: Omit<RecreationStroke, "id" | "kind" | "order" | "animated" | "path"> = {}): RecreationStroke => ({ id, kind: "stroke", order, path, ...style });
+const box = (id: string, order: number, x: number, y: number, width: number, height: number, style: Omit<RecreationBox, "id" | "kind" | "order" | "animated" | "x" | "y" | "width" | "height"> = {}): RecreationBox => ({ id, kind: "box", order, x, y, width, height, ...style });
+const staticStroke = (id: string, path: string, style: Omit<RecreationStroke, "id" | "kind" | "order" | "animated" | "path"> = {}): RecreationStroke => ({ id, kind: "stroke", animated: false, path, ...style });
+const staticBox = (id: string, x: number, y: number, width: number, height: number, style: Omit<RecreationBox, "id" | "kind" | "order" | "animated" | "x" | "y" | "width" | "height"> = {}): RecreationBox => ({ id, kind: "box", animated: false, x, y, width, height, ...style });
 
 const blue = "#284d9a";
 const green = "#23845e";
-const red = "#c62727";
 const ink = "#171717";
-const ruled = "rgba(70, 102, 136, 0.16)";
 
-export const currentRecreationScene: RecreationScene = {
-  id: "photo-1-skill-agent-notes",
+export const skillAgentNotesScene: RecreationScene = {
+  id: "skill-agent-notes",
+  title: "Skill 与 Agent 课堂笔记",
+  description: "双栏课堂笔记：Skill、Agent 的定义、差异、联系与调用关系。",
   sourceName: "Photo 1.jpg",
+  createdAt: "2026-08-06",
   width: 908,
   height: 1280,
+  paper: { background: "#faf9ee", pattern: "ruled", patternColor: "rgba(84,113,139,.16)", spacing: 31, patternOffset: 30, patternThickness: 1 },
   elements: [
-    box("page-frame", 1, 14, 14, 880, 1248, { stroke: "rgba(20,20,20,.55)", strokeWidth: 1.2 }),
-    stroke("header-rule-1", 2, "M 24 103 L 884 103", { color: ink, width: 1.2 }),
-    stroke("header-rule-2", 3, "M 24 119 L 884 119", { color: ink, width: 1.2 }),
-    stroke("table-top", 4, "M 14 137 L 894 137", { color: ink, width: 1.4 }),
-    stroke("table-divider", 5, "M 220 137 L 220 1112", { color: ink, width: 1.2 }),
-    stroke("summary-rule", 6, "M 14 1112 L 894 1112", { color: ink, width: 1.2 }),
+    staticBox("page-frame", 14, 14, 880, 1248, { stroke: "rgba(20,20,20,.55)", strokeWidth: 1.2 }),
+    staticStroke("header-rule-1", "M 24 103 L 884 103", { color: ink, width: 1.2 }),
+    staticStroke("header-rule-2", "M 24 119 L 884 119", { color: ink, width: 1.2 }),
+    staticStroke("table-top", "M 14 137 L 894 137", { color: ink, width: 1.4 }),
+    staticStroke("table-divider", "M 220 137 L 220 1112", { color: ink, width: 1.2 }),
+    staticStroke("summary-rule", "M 14 1112 L 894 1112", { color: ink, width: 1.2 }),
     text("date", 7, 42, 43, 360, "日期： 2025.05.20", { fontSize: 20 }),
     text("course", 8, 42, 78, 360, "课程主题： 人工智能基础", { fontSize: 20 }),
     text("topic", 9, 468, 43, 390, "主题： 什么是 skill 和 agent", { fontSize: 20 }),
