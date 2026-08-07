@@ -13,19 +13,29 @@ const greenHighlight = "rgba(70,177,118,.28)";
 const purpleHighlight = "rgba(157,103,207,.25)";
 
 const text = (pageId: string, id: string, order: number, x: number, y: number, width: number, value: string, style: RecreationTextStyle = {}): RecreationText => ({ id, kind: "text", pageId, order, x, y, width, text: value, style });
-const stroke = (pageId: string, id: string, order: number, path: string, style: Omit<RecreationStroke, "id" | "kind" | "order" | "animated" | "pageId" | "path"> = {}): RecreationStroke => ({ id, kind: "stroke", pageId, order, path, ...style });
-const box = (pageId: string, id: string, order: number, x: number, y: number, width: number, height: number, style: Omit<RecreationBox, "id" | "kind" | "order" | "animated" | "pageId" | "x" | "y" | "width" | "height"> = {}): RecreationBox => ({ id, kind: "box", pageId, order, x, y, width, height, ...style });
+const stroke = (pageId: string, id: string, order: number, path: string, style: Omit<RecreationStroke, "id" | "kind" | "order" | "animated" | "pageId" | "path"> = {}): RecreationStroke => {
+  const handDrawn = style.handDrawn !== false;
+  return { id, kind: "stroke", pageId, order, path, ...style, ...(handDrawn ? { roughness: Math.max(style.roughness ?? 0, 1.35), bowing: Math.max(style.bowing ?? 0, 1.05) } : {}) };
+};
+const box = (pageId: string, id: string, order: number, x: number, y: number, width: number, height: number, style: Omit<RecreationBox, "id" | "kind" | "order" | "animated" | "pageId" | "x" | "y" | "width" | "height"> = {}): RecreationBox => {
+  const handDrawn = style.handDrawn !== false;
+  return { id, kind: "box", pageId, order, x, y, width, height, ...style, ...(handDrawn ? { roughness: Math.max(style.roughness ?? 0, 1.4), bowing: Math.max(style.bowing ?? 0, 1) } : {}) };
+};
 const highlight = (pageId: string, id: string, order: number, targetId: string, match: string, color = yellowHighlight): RecreationMark => ({ id, kind: "mark", pageId, order, targetId, match, mark: "highlight", color, opacity: .95, padding: 2, wobble: 1.1 });
-const hold = (pageId: string, id: string, order: number, durationMs = 650): RecreationViewEffect => ({ id, kind: "view", pageId, order, mode: "restore", durationMs });
+const hold = (pageId: string, id: string, order: number, durationMs = 1000): RecreationViewEffect => ({ id, kind: "view", pageId, order, mode: "restore", durationMs });
 const turn = (id: string, order: number, pageId: string, durationMs = 760): RecreationPageTurn => ({ id, kind: "page", order, pageId, durationMs, transition: "slide" });
 const tickText = (pageId: string, id: string, order: number, centerX: number, y: number, value: string) => text(pageId, id, order, centerX - 66, y, 132, value, { fontSize: 24, lineHeight: 34, textAlign: "center" });
 
-function scribblePath(x: number, y: number, width: number, height: number, columns = 54) {
-  const gap = width / Math.max(1, columns - 1);
-  const parts = [`M ${x} ${y + height}`];
+function scribblePath(x: number, y: number, width: number, height: number) {
+  const columns = Math.max(2, Math.ceil(width / 3.2) + 1);
+  const gap = width / (columns - 1);
+  const top = y + 3;
+  const bottom = y + height - 3;
+  const parts = [`M ${x} ${bottom}`];
   for (let column = 0; column < columns; column += 1) {
     const xx = x + column * gap;
-    const yy = column % 2 === 0 ? y : y + height;
+    const edgeWobble = Math.sin(column * 1.73) * 1.15;
+    const yy = column % 2 === 0 ? top + edgeWobble : bottom - edgeWobble;
     parts.push(`L ${xx} ${yy}`);
     if (column < columns - 1) parts.push(`L ${xx + gap} ${yy}`);
   }
@@ -47,7 +57,7 @@ export const iphone18ProRumorsVideoScene: RecreationScene = {
   prompt: "把这张 iPhone 18 Pro 爆料参数笔记做成适合小红书竖屏录制的手写视频。7 个模块必须分开逐页演示，每页内容放大，所有图表和图标按人的真实书写/绘制逻辑依次完成。",
   sourceName: "iPhone 18 Pro 爆料参数笔记.png",
   createdAt: "2026-08-07",
-  snapshotRevision: "2026-08-07.3",
+  snapshotRevision: "2026-08-08.4",
   width: 900,
   height: 1600,
   paper: { background: "#fbfaf6", pattern: "ruled", patternColor: "rgba(78,102,126,.12)", spacing: 48, patternOffset: 44, patternThickness: 1 },
@@ -67,7 +77,7 @@ export const iphone18ProRumorsVideoScene: RecreationScene = {
     stroke("cover", "cover-underline", 11, "M 150 555 Q 455 538 755 552", { color: blue, width: 4, roughness: 1.1, bowing: 1.3 }),
     text("cover", "cover-rumor", 12, 140, 610, 620, "Rumors / 非官方，仅供参考", { color: gray, fontSize: 34, lineHeight: 44, textAlign: "center" }),
     text("cover", "cover-guide", 13, 130, 815, 640, "芯片 / 内存 / 屏幕 / 影像\n续航 / 通信 / 外观", { color: blue, fontSize: 36, lineHeight: 72, textAlign: "center" }),
-    hold("cover", "cover-hold", 14, 760),
+    hold("cover", "cover-hold", 14),
     turn("turn-chip", 15, "chip-ai"),
 
     ...pageTitle("chip-ai", 100, "1", "芯片 / AI", blue),
@@ -82,7 +92,7 @@ export const iphone18ProRumorsVideoScene: RecreationScene = {
     tickText("chip-ai", "perf-tick-left", 107, 270, 808, "-20%"),
     tickText("chip-ai", "perf-tick-mid", 107.1, 485, 808, "0"),
     tickText("chip-ai", "perf-tick-right", 107.2, 700, 808, "+20%"),
-    stroke("chip-ai", "perf-fill", 108, scribblePath(275, 679, 320, 55), { color: blue, width: 4.8, opacity: .82, handDrawn: false }),
+    stroke("chip-ai", "perf-fill", 108, scribblePath(275, 679, 320, 55), { color: blue, width: 7.2, opacity: .88, handDrawn: false }),
     text("chip-ai", "perf-value", 109, 715, 680, 130, "+15%", { color: blue, fontSize: 38, lineHeight: 48, fontWeight: 620 }),
     text("chip-ai", "power-label", 110, 86, 925, 220, "功耗降低", { fontSize: 34, lineHeight: 44 }),
     box("chip-ai", "power-bar-frame", 111, 270, 935, 430, 74, { stroke: ink, strokeWidth: 2.2, radius: 3, roughness: .7 }),
@@ -90,7 +100,7 @@ export const iphone18ProRumorsVideoScene: RecreationScene = {
     tickText("chip-ai", "power-tick-left", 113, 270, 1074, "-40%"),
     tickText("chip-ai", "power-tick-mid", 113.1, 485, 1074, "-20%"),
     tickText("chip-ai", "power-tick-right", 113.2, 700, 1074, "0"),
-    stroke("chip-ai", "power-fill", 114, scribblePath(275, 944, 250, 55), { color: green, width: 4.8, opacity: .82, handDrawn: false }),
+    stroke("chip-ai", "power-fill", 114, scribblePath(275, 944, 250, 55), { color: green, width: 7.2, opacity: .88, handDrawn: false }),
     text("chip-ai", "power-value", 115, 715, 945, 130, "-30%", { color: green, fontSize: 38, lineHeight: 48, fontWeight: 620 }),
     text("chip-ai", "chip-fast", 116, 120, 1265, 170, "更快", { color: blue, fontSize: 42, lineHeight: 54, fontWeight: 650, textAlign: "center" }),
     text("chip-ai", "chip-efficient", 116.1, 340, 1265, 190, "更省电", { color: green, fontSize: 42, lineHeight: 54, fontWeight: 650, textAlign: "center" }),
