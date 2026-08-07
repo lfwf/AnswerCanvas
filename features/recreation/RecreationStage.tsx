@@ -85,16 +85,26 @@ export function RecreationStage({ scene, history = [] }: { scene: RecreationScen
   const pagePresentation = useMemo(() => pagePresentationFor(scene, progress), [progress, scene]);
   const pageForIndicator = pagePresentation.incomingPageId && pagePresentation.transitionProgress >= 0.5 ? pagePresentation.incomingPageId : pagePresentation.currentPageId;
   const pageIndex = scene.pages?.findIndex((page) => page.id === pageForIndicator) ?? -1;
+  const isPagedVideo = Boolean(scene.pages?.length);
+  const transparentSurface = scene.paper.background === "transparent";
 
   useEffect(() => {
     const viewport = canvasViewportRef.current;
     if (!viewport || typeof ResizeObserver === "undefined") return;
-    const update = (width: number) => setScale(Math.min(1, Math.max(0.28, (width - 4) / scene.width)));
-    update(viewport.clientWidth);
-    const observer = new ResizeObserver(([entry]) => update(entry.contentRect.width));
+    const update = (width: number, height: number) => {
+      const widthScale = Math.max(0.22, (width - 8) / scene.width);
+      if (!isPagedVideo || height <= 0) {
+        setScale(Math.min(1, widthScale));
+        return;
+      }
+      const heightScale = Math.max(0.22, (height - 8) / scene.height);
+      setScale(Math.min(1, widthScale, heightScale));
+    };
+    update(viewport.clientWidth, viewport.clientHeight);
+    const observer = new ResizeObserver(([entry]) => update(entry.contentRect.width, entry.contentRect.height));
     observer.observe(viewport);
     return () => observer.disconnect();
-  }, [scene.width]);
+  }, [isPagedVideo, scene.height, scene.width]);
 
   useEffect(() => {
     if (!fontsReady) return;
@@ -189,7 +199,7 @@ export function RecreationStage({ scene, history = [] }: { scene: RecreationScen
             </nav>
           </header>
 
-          <div className="answer-canvas-viewport" ref={canvasViewportRef}>
+          <div className={`answer-canvas-viewport${isPagedVideo ? " is-paged-video" : ""}${transparentSurface ? " is-transparent-surface" : ""}`} ref={canvasViewportRef}>
             <div className="recreation-paper-shell" style={{ width: scene.width * scale, height: scene.height * scale }}>
               <div className="recreation-canvas-transform recreation-page-stage" style={{ width: scene.width, height: scene.height, transform: `scale(${scale})` }}>
                 {pagePresentation.incomingPageId && pagePresentation.outgoingPageId ? <>
