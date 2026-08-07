@@ -1,5 +1,13 @@
 export type RecreationElement = RecreationText | RecreationStroke | RecreationBox | RecreationMark;
 
+export interface RecreationPaperStyle {
+  background?: string;
+  ruleColor?: string;
+  ruleSpacing?: number;
+  ruleThickness?: number;
+  ruleOffset?: number;
+}
+
 export interface RecreationTextStyle {
   color?: string;
   fontSize?: number;
@@ -8,6 +16,11 @@ export interface RecreationTextStyle {
   textAlign?: "left" | "center" | "right";
   letterSpacing?: string;
   rotate?: number;
+  nudgeX?: number;
+  nudgeY?: number;
+  baselineShift?: number;
+  snapToRule?: boolean;
+  characterJitter?: number;
 }
 
 export interface RecreationText {
@@ -31,6 +44,9 @@ export interface RecreationStroke {
   width?: number;
   opacity?: number;
   dash?: string;
+  handDrawn?: boolean;
+  roughness?: number;
+  bowing?: number;
 }
 
 export interface RecreationBox {
@@ -46,6 +62,9 @@ export interface RecreationBox {
   strokeWidth?: number;
   dash?: string;
   radius?: number;
+  handDrawn?: boolean;
+  roughness?: number;
+  bowing?: number;
 }
 
 export interface RecreationMark {
@@ -69,5 +88,6 @@ export interface RecreationScene {
   sourceName: string;
   width: number;
   height: number;
+  paper?: RecreationPaperStyle;
   elements: RecreationElement[];
 }
