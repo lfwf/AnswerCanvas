@@ -20,9 +20,10 @@ function textCenterX(id: string) {
 }
 
 describe("iPhone 18 Pro paged rumor video scene", () => {
-  it("uses a vertical recording canvas and nine readable pages", () => {
+  it("uses a vertical recording canvas, explicit snapshot revision and nine readable pages", () => {
     expect(iphone18ProRumorsVideoScene.width).toBe(900);
     expect(iphone18ProRumorsVideoScene.height).toBe(1600);
+    expect(iphone18ProRumorsVideoScene.snapshotRevision).toBe("2026-08-07.3");
     expect(iphone18ProRumorsVideoScene.pages?.map((page) => page.id)).toEqual(["cover", "chip-ai", "memory", "display", "camera", "battery", "connectivity", "appearance", "summary"]);
   });
 
@@ -42,6 +43,7 @@ describe("iPhone 18 Pro paged rumor video scene", () => {
     expect(order("power-tick-mid")).toBeLessThan(order("power-tick-right"));
     expect(order("power-tick-right")).toBeLessThan(order("power-fill"));
     expect(order("power-fill")).toBeLessThan(order("power-value"));
+    expect(order("power-value")).toBeLessThan(order("chip-fast"));
   });
 
   it("centers every chart tick label on the actual tick coordinate", () => {
@@ -50,10 +52,10 @@ describe("iPhone 18 Pro paged rumor video scene", () => {
     }
   });
 
-  it("keeps only audience-facing copy on the chip and display pages", () => {
+  it("keeps implementation meta copy out and gives silent-video pages factual takeaways", () => {
     expect(iphone18ProRumorsVideoScene.elements.some((element) => element.id === "chip-note")).toBe(false);
     expect(iphone18ProRumorsVideoScene.elements.some((element) => element.id === "memory-explain")).toBe(false);
-    expect(iphone18ProRumorsVideoScene.elements.some((element) => element.id === "display-summary")).toBe(false);
+    for (const id of ["chip-fast", "chip-efficient", "chip-ai-takeaway", "display-recap", "camera-bottom", "battery-takeaway", "connectivity-takeaway", "appearance-takeaway"]) expect(byId(id)).toBeTruthy();
   });
 
   it("finishes each page before turning to the next one", () => {

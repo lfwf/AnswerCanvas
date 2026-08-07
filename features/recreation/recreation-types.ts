@@ -136,6 +136,7 @@ export interface RecreationScene {
   prompt?: string;
   sourceName: string;
   createdAt: string;
+  snapshotRevision?: string;
   width: number;
   height: number;
   paper: RecreationPaperStyle;
