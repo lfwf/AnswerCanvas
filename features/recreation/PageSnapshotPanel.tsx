@@ -43,7 +43,7 @@ export function PageSnapshotPanel({ scene, ready }: { scene: RecreationScene; re
           if (!paper) throw new Error(`snapshot page ${page.id} is unavailable`);
           const dataUrl = await toPng(paper, {
             cacheBust: true,
-            pixelRatio: 2,
+            pixelRatio: 1.25,
             backgroundColor: scene.paper.background === "transparent" ? "#fbf7ed" : scene.paper.background,
           });
           result.push({ pageId: page.id, title: page.title, dataUrl });
@@ -66,7 +66,7 @@ export function PageSnapshotPanel({ scene, ready }: { scene: RecreationScene; re
 
   return <>
     <button className="snapshot-trigger" type="button" onClick={() => setOpen(true)} disabled={state !== "ready"}>
-      {state === "generating" ? "生成截图…" : state === "error" ? "截图失败" : state === "ready" ? `最终截图 ${snapshots.length}` : "准备截图"}
+      {state === "generating" ? "生成截图…" : state === "error" ? "截图失败" : state === "ready" ? `最终截图 ${snapshots.length}` : "首轮结束后截图"}
     </button>
 
     <div className="page-snapshot-source" ref={sourceRef} aria-hidden="true">
@@ -77,7 +77,7 @@ export function PageSnapshotPanel({ scene, ready }: { scene: RecreationScene; re
 
     {open && state === "ready" ? <div className="snapshot-modal" role="dialog" aria-modal="true" aria-label="每页最终截图">
       <div className="snapshot-modal-card">
-        <header><div><strong>每页最终截图</strong><span>{snapshots.length} 页 · 已按完成态自动生成</span></div><button type="button" onClick={() => setOpen(false)} aria-label="关闭截图面板">×</button></header>
+        <header><div><strong>每页最终截图</strong><span>{snapshots.length} 页 · 首轮播放结束后自动生成</span></div><button type="button" onClick={() => setOpen(false)} aria-label="关闭截图面板">×</button></header>
         <div className="snapshot-grid">
           {snapshots.map((snapshot, index) => <figure key={snapshot.pageId}>
             <img src={snapshot.dataUrl} alt={`${index + 1}. ${snapshot.title}`} />
