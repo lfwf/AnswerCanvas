@@ -9,14 +9,14 @@ export interface ResolvedTextPlacement {
 
 function clamp(value: number, min: number, max: number) { return Math.min(max, Math.max(min, value)); }
 
-export function resolveTextPlacement(element: RecreationText, paper?: RecreationPaperStyle): ResolvedTextPlacement {
+export function resolveTextPlacement(element: RecreationText, paper: RecreationPaperStyle): ResolvedTextPlacement {
   const style = element.style;
   const left = element.x + (style?.nudgeX ?? 0);
   let top = element.y + (style?.nudgeY ?? 0);
   let lineHeight = style?.lineHeight;
-  const spacing = paper?.ruleSpacing;
-  const offset = paper?.ruleOffset ?? paper?.ruleSpacing ?? 0;
-  if (style?.snapToRule && spacing && spacing > 0) {
+  if (paper.pattern === "ruled" && style?.snapToRule) {
+    const spacing = paper.spacing;
+    const offset = paper.patternOffset ?? spacing;
     const fontSize = style.fontSize ?? 17;
     const naturalLineHeight = lineHeight ?? Math.round(fontSize * 1.65);
     const baselineWithinLine = style.baselineShift ?? Math.min(naturalLineHeight * 0.78, fontSize * 1.08);
