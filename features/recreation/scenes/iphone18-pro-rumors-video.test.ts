@@ -13,6 +13,12 @@ function order(id: string) {
   return element.order;
 }
 
+function textCenterX(id: string) {
+  const element = byId(id);
+  if (element.kind !== "text") throw new Error(`${id} is not text`);
+  return element.x + element.width / 2;
+}
+
 describe("iPhone 18 Pro paged rumor video scene", () => {
   it("uses a vertical recording canvas and nine readable pages", () => {
     expect(iphone18ProRumorsVideoScene.width).toBe(900);
@@ -36,6 +42,12 @@ describe("iPhone 18 Pro paged rumor video scene", () => {
     expect(order("power-tick-mid")).toBeLessThan(order("power-tick-right"));
     expect(order("power-tick-right")).toBeLessThan(order("power-fill"));
     expect(order("power-fill")).toBeLessThan(order("power-value"));
+  });
+
+  it("centers every chart tick label on the actual tick coordinate", () => {
+    for (const [id, x] of [["perf-tick-left", 270], ["perf-tick-mid", 485], ["perf-tick-right", 700], ["power-tick-left", 270], ["power-tick-mid", 485], ["power-tick-right", 700]] as const) {
+      expect(textCenterX(id)).toBe(x);
+    }
   });
 
   it("keeps only audience-facing copy on the chip and display pages", () => {
