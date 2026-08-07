@@ -62,6 +62,7 @@ export function RecreationStage({ scene, history = [] }: { scene: RecreationScen
   const canvasViewportRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<RecreationPlayer | null>(null);
   const speedRef = useRef(1);
+  const autoplayTimerRef = useRef(0);
   const [progress, setProgress] = useState<Record<string, number>>({});
   const [scale, setScale] = useState(0.7);
   const [status, setStatus] = useState<"idle" | "playing" | "paused" | "complete">("idle");
@@ -91,7 +92,6 @@ export function RecreationStage({ scene, history = [] }: { scene: RecreationScen
     });
     player.setSpeed(speedRef.current);
     playerRef.current = player;
-    let startTimer = 0;
     const setupTimer = window.setTimeout(() => {
       if (!active) return;
       if (reducedMotion) {
@@ -101,12 +101,13 @@ export function RecreationStage({ scene, history = [] }: { scene: RecreationScen
       }
       setProgress({});
       setStatus("idle");
-      startTimer = window.setTimeout(() => { if (!active) return; player.play(); setStatus("playing"); }, 350);
+      autoplayTimerRef.current = window.setTimeout(() => { if (!active) return; player.play(); setStatus("playing"); }, 350);
     }, 0);
     return () => {
       active = false;
       window.clearTimeout(setupTimer);
-      window.clearTimeout(startTimer);
+      window.clearTimeout(autoplayTimerRef.current);
+      autoplayTimerRef.current = 0;
       player.pause();
       if (playerRef.current === player) playerRef.current = null;
     };
@@ -121,11 +122,13 @@ export function RecreationStage({ scene, history = [] }: { scene: RecreationScen
 
   const replay = useCallback(() => {
     const player = playerRef.current;
-    if (!player) return;
+    if (!player || reducedMotion) return;
+    window.clearTimeout(autoplayTimerRef.current);
+    autoplayTimerRef.current = 0;
     setProgress({});
-    player.replay();
-    setStatus("playing");
-  }, []);
+    player.reset();
+    setStatus("paused");
+  }, [reducedMotion]);
 
   const changeSpeed = useCallback((next: number) => {
     speedRef.current = next;
@@ -166,7 +169,7 @@ export function RecreationStage({ scene, history = [] }: { scene: RecreationScen
             <div className="assistant-identity"><span className="assistant-avatar">AC</span><div><strong>AnswerCanvas</strong><span>{statusLabel}</span></div></div>
             <nav className="answer-controls" aria-label="播放控制">
               <button type="button" onClick={togglePlay} disabled={status === "complete" || !fontsReady}>{status === "playing" ? "暂停" : status === "complete" ? "完成" : "继续"}</button>
-              <button type="button" onClick={replay} disabled={!fontsReady}>重播</button>
+              <button type="button" onClick={replay} disabled={!fontsReady || reducedMotion}>重播</button>
               <select aria-label="播放速度" value={speed} onChange={(event) => changeSpeed(Number(event.target.value))}><option value="0.5">0.5x</option><option value="1">1x</option><option value="1.5">1.5x</option><option value="2">2x</option></select>
             </nav>
           </header>

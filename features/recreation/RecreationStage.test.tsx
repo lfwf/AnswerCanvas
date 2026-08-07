@@ -1,4 +1,6 @@
-import { timelineElements } from "./RecreationStage";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, vi } from "vitest";
+import { RecreationStage, timelineElements } from "./RecreationStage";
 import type { RecreationScene } from "./recreation-types";
 
 function makeScene(id: string, titleOrder: number): RecreationScene {
@@ -29,5 +31,42 @@ describe("RecreationStage timeline", () => {
     expect(first[0].id).toBe(second[0].id);
     expect(first[0].order).toBe(2);
     expect(second[0].order).toBe(7);
+  });
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe("RecreationStage playback controls", () => {
+  async function initializeStage() {
+    render(<RecreationStage scene={makeScene("replay-scene", 1)} />);
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    act(() => { vi.advanceTimersByTime(0); });
+  }
+
+  it("keeps initial autoplay behavior", async () => {
+    vi.useFakeTimers();
+    await initializeStage();
+
+    act(() => { vi.advanceTimersByTime(351); });
+
+    expect(screen.getByRole("button", { name: "暂停" })).toBeInTheDocument();
+    expect(screen.getByText("正在书写")).toBeInTheDocument();
+  });
+
+  it("resets to paused and waits for continue", async () => {
+    vi.useFakeTimers();
+    await initializeStage();
+
+    fireEvent.click(screen.getByRole("button", { name: "重播" }));
+
+    expect(screen.getByRole("button", { name: "继续" })).toBeInTheDocument();
+    expect(screen.getByText("已暂停")).toBeInTheDocument();
+
+    act(() => { vi.advanceTimersByTime(500); });
+    expect(screen.getByRole("button", { name: "继续" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "继续" }));
+    expect(screen.getByRole("button", { name: "暂停" })).toBeInTheDocument();
   });
 });

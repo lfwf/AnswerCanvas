@@ -1,6 +1,14 @@
 import { render, screen } from "@testing-library/react";
+import { vi } from "vitest";
 import { SceneGallery } from "./SceneGallery";
 import { listScenes } from "./scene-registry";
+import type { RecreationScene } from "./recreation-types";
+
+vi.mock("./RecreationCanvas", () => ({
+  RecreationCanvas: ({ scene, completed }: { scene: RecreationScene; completed?: boolean }) => (
+    <div data-completed={completed ? "true" : "false"} data-scene-id={scene.id} />
+  ),
+}));
 
 describe("SceneGallery", () => {
   it("shows all registered scenes and links to canonical URLs", () => {
@@ -12,7 +20,9 @@ describe("SceneGallery", () => {
 
   it("uses completed canvases without player controls", () => {
     const { container } = render(<SceneGallery scenes={listScenes()} />);
-    expect(container.querySelectorAll("[data-scene-id]")).toHaveLength(3);
+    const canvases = container.querySelectorAll("[data-scene-id]");
+    expect(canvases).toHaveLength(3);
+    expect([...canvases].every((canvas) => canvas.getAttribute("data-completed") === "true")).toBe(true);
     expect(screen.queryByRole("button", { name: "重播" })).toBeNull();
     expect(container.querySelector(".recreation-toolbar")).toBeNull();
   });

@@ -45,13 +45,17 @@ export class RecreationPlayer {
     this.schedule();
   }
 
-  replay() {
+  reset() {
     this.unschedule();
-    this.status = "idle";
+    this.status = "paused";
     this.index = 0;
     this.eventElapsedMs = 0;
     this.completedEmitted = false;
     for (const event of this.events) this.onProgress(event, 0);
+  }
+
+  replay() {
+    this.reset();
     this.play();
   }
 

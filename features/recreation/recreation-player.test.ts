@@ -1,6 +1,54 @@
 import { RecreationPlayer } from "./recreation-player";
 
 describe("RecreationPlayer", () => {
+  it("resets to a paused start without scheduling playback", () => {
+    let now = 0;
+    const callbacks: FrameRequestCallback[] = [];
+    const cancelled: number[] = [];
+    const progress: Array<[string, number]> = [];
+    const player = new RecreationPlayer({
+      events: [{ id: "first", durationMs: 100 }, { id: "second", durationMs: 100 }],
+      onProgress: (event, value) => progress.push([event.id, value]),
+      clock: {
+        now: () => now,
+        requestFrame: (callback) => { callbacks.push(callback); return callbacks.length; },
+        cancelFrame: (handle) => { cancelled.push(handle); },
+      },
+    });
+
+    player.play();
+    const staleCallback = callbacks[0];
+    player.reset();
+
+    expect(player.getState().status).toBe("paused");
+    expect(progress.slice(-2)).toEqual([["first", 0], ["second", 0]]);
+    expect(callbacks).toHaveLength(1);
+    expect(cancelled).toContain(1);
+
+    now = 50;
+    staleCallback(now);
+    expect(progress.at(-1)).toEqual(["second", 0]);
+
+    player.resume();
+    expect(callbacks).toHaveLength(2);
+    now = 100;
+    callbacks[1](now);
+    expect(progress.at(-1)).toEqual(["first", 0.5]);
+  });
+
+  it("keeps replay as reset followed by immediate playback", () => {
+    const callbacks: FrameRequestCallback[] = [];
+    const player = new RecreationPlayer({
+      events: [{ id: "only", durationMs: 100 }],
+      onProgress: () => {},
+      clock: { now: () => 0, requestFrame: (callback) => { callbacks.push(callback); return callbacks.length; }, cancelFrame: () => {} },
+    });
+
+    player.replay();
+
+    expect(player.getState().status).toBe("playing");
+    expect(callbacks).toHaveLength(1);
+  });
   it("keeps one active writing event at a time and preserves frame remainder", () => {
     let now = 0;
     let callback: FrameRequestCallback | undefined;
