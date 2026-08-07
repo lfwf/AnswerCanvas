@@ -23,7 +23,7 @@ describe("iPhone 18 Pro paged rumor video scene", () => {
   it("uses a vertical recording canvas, explicit snapshot revision and nine readable pages", () => {
     expect(iphone18ProRumorsVideoScene.width).toBe(900);
     expect(iphone18ProRumorsVideoScene.height).toBe(1600);
-    expect(iphone18ProRumorsVideoScene.snapshotRevision).toBe("2026-08-07.3");
+    expect(iphone18ProRumorsVideoScene.snapshotRevision).toBe("2026-08-08.4");
     expect(iphone18ProRumorsVideoScene.pages?.map((page) => page.id)).toEqual(["cover", "chip-ai", "memory", "display", "camera", "battery", "connectivity", "appearance", "summary"]);
   });
 
@@ -49,6 +49,41 @@ describe("iPhone 18 Pro paged rumor video scene", () => {
   it("centers every chart tick label on the actual tick coordinate", () => {
     for (const [id, x] of [["perf-tick-left", 270], ["perf-tick-mid", 485], ["perf-tick-right", 700], ["power-tick-left", 270], ["power-tick-mid", 485], ["power-tick-right", 700]] as const) {
       expect(textCenterX(id)).toBe(x);
+    }
+  });
+
+  it("uses dense overlapping left-to-right scribble fills for the comparison bars", () => {
+    for (const id of ["perf-fill", "power-fill"] as const) {
+      const element = byId(id);
+      if (element.kind !== "stroke") throw new Error(`${id} is not a stroke`);
+      expect(element.handDrawn).toBe(false);
+      expect(element.width).toBeGreaterThanOrEqual(7);
+      expect((element.path.match(/L /gu) ?? []).length).toBeGreaterThan(140);
+    }
+  });
+
+  it("keeps chart frames and axes visibly hand-drawn instead of ruler-straight", () => {
+    for (const id of ["perf-axis", "power-axis", "battery-chart-axes"] as const) {
+      const element = byId(id);
+      if (element.kind !== "stroke") throw new Error(`${id} is not a stroke`);
+      expect(element.handDrawn).not.toBe(false);
+      expect(element.roughness).toBeGreaterThanOrEqual(1.35);
+      expect(element.bowing).toBeGreaterThanOrEqual(1.05);
+    }
+    for (const id of ["perf-bar-frame", "power-bar-frame", "battery-outline"] as const) {
+      const element = byId(id);
+      if (element.kind !== "box") throw new Error(`${id} is not a box`);
+      expect(element.handDrawn).not.toBe(false);
+      expect(element.roughness).toBeGreaterThanOrEqual(1.4);
+      expect(element.bowing).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it("holds every completed video page for at least one second before the next page turn", () => {
+    for (const id of ["cover-hold", "chip-hold", "memory-hold", "display-hold", "camera-hold", "battery-hold", "connectivity-hold", "appearance-hold"] as const) {
+      const element = byId(id);
+      if (element.kind !== "view") throw new Error(`${id} is not a view hold`);
+      expect(element.durationMs).toBeGreaterThanOrEqual(1000);
     }
   });
 
