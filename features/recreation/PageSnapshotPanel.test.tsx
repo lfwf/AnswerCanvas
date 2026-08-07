@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, vi } from "vitest";
 import type { RecreationScene } from "./recreation-types";
 
-const toPng = vi.fn(async () => "data:image/png;base64,c25hcHNob3Q=");
+const { toPng } = vi.hoisted(() => ({ toPng: vi.fn(async () => "data:image/png;base64,c25hcHNob3Q=") }));
 vi.mock("html-to-image", () => ({ toPng }));
 vi.mock("./RecreationCanvas", () => ({
   RecreationCanvas: ({ pageId }: { pageId?: string }) => <article className="recreation-paper" data-page={pageId}>page</article>,
