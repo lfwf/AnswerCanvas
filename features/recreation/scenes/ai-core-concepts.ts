@@ -57,7 +57,7 @@ export const aiCoreConceptsScene: RecreationScene = {
     stroke("brain-ray-learning", 43, "M 842 330 L 921 306", { color: blue, width: 1.2, dash: "5 5" }),
     stroke("brain-ray-reasoning", 44, "M 842 347 L 919 363", { color: purple, width: 1.2, dash: "5 5" }),
     stroke("brain-ray-action", 45, "M 837 360 L 900 414", { color: orange, width: 1.2, dash: "5 5" }),
-    text("brain-perception", 46, 900, 245, 110, "感知 · 感知", { color: green, fontSize: 14 }),
+    text("brain-perception", 46, 900, 245, 110, "感知", { color: green, fontSize: 16 }),
     text("brain-learning", 47, 919, 294, 90, "学习", { color: blue, fontSize: 16 }),
     text("brain-reasoning", 48, 917, 348, 92, "推理", { color: purple, fontSize: 16 }),
     text("brain-action", 49, 919, 400, 90, "行动", { color: orange, fontSize: 16 }),
@@ -109,7 +109,7 @@ export const aiCoreConceptsScene: RecreationScene = {
 
     text("cue-trends", 150, 48, 989, 165, "★ AI 的发展趋势\n- 未来会怎样？\n- 需要注意什么？", { fontSize: 18, lineHeight: 35 }),
     text("trends-title", 151, 263, 988, 390, "五、AI 的发展趋势", { color: blue, fontSize: 21, fontWeight: 500 }),
-    text("trends-points", 152, 266, 1028, 555, "• 大模型驱动：从专用模型走向通用能力更强的大模型。\n• 多模态融合：文字、图像、语音、视频等信息综合理解。\n• AI + 行业：与各行业深度结合，提升效率与创新。\n• 兼在发展盒：关注隐私、偏见、可解释性与伦理问题。", { fontSize: 16, lineHeight: 33 }),
+    text("trends-points", 152, 266, 1028, 555, "• 大模型驱动：从专用模型走向通用能力更强的大模型。\n• 多模态融合：文字、图像、语音、视频等信息综合理解。\n• AI + 行业：与各行业深度结合，提升效率与创新。\n• 发展责任：关注隐私、偏见、可解释性与伦理问题。", { fontSize: 16, lineHeight: 33 }),
     mark("trend-model-underline", 153, "trends-points", "通用能力更强的大模型"),
     mark("trend-privacy-underline", 154, "trends-points", "隐私、偏见、可解释性与伦理问题"),
     stroke("balance-top", 155, "M 807 1025 L 939 1015", { color: ink, width: 1.7 }),
