@@ -2,36 +2,47 @@ import { expect, test } from "@playwright/test";
 
 test("gallery exposes all canonical recreation scenes", async ({ page }) => {
   await page.goto("/");
+  await expect(page.getByRole("link", { name: /长句分析练习/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /长句语法沉浸式分析/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /未来3年，最需要 AI 能力的岗位/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /关于 AI 的核心概念与发展/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /Skill 与 Agent 课堂笔记/ })).toBeVisible();
-  await expect(page.locator("[data-scene-id]")).toHaveCount(4);
+  await expect(page.locator("[data-scene-id]")).toHaveCount(5);
   await expect(page.locator(".answer-controls")).toHaveCount(0);
 });
 
 test("scene page is presented as a conversation with history, prompt and composer", async ({ page }) => {
-  await page.goto("/scenes/immersive-grammar-analysis");
+  await page.goto("/scenes/long-sentence-analysis-practice");
   await expect(page.getByRole("complementary", { name: "历史记录" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /长句分析练习/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /长句语法沉浸式分析/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /未来3年，最需要 AI 能力的岗位/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /关于 AI 的核心概念与发展/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /Skill 与 Agent 课堂笔记/ })).toBeVisible();
-  await expect(page.locator(".user-message")).toContainText("不要重复抄句子");
+  await expect(page.locator(".user-message")).toContainText("先写原句");
   await expect(page.getByRole("article", { name: "AnswerCanvas 手写回答" })).toBeVisible();
   await expect(page.getByRole("textbox", { name: "继续提问" })).toBeVisible();
   await expect(page.getByRole("button", { name: "发送" })).toBeVisible();
 });
 
-test("immersive grammar scene keeps one source sentence and anchored analysis labels", async ({ page }) => {
+test("long sentence practice keeps source text and analysis on the same notebook page", async ({ page }) => {
+  await page.goto("/scenes/long-sentence-analysis-practice");
+  await expect(page.locator('[data-scene-id="long-sentence-analysis-practice"]')).toBeVisible();
+  await expect(page.locator(".recreation-paper--ruled")).toBeVisible();
+  await expect(page.locator("svg")).toHaveAttribute("viewBox", "0 0 1216 1294");
+  await expect(page.locator('[data-text-id="sentence-line-1"]')).toHaveCount(1);
+  await expect(page.locator('[data-annotation-id="a-although"]')).toHaveCount(1);
+  await expect(page.locator('[data-text-id="structure-title"]')).toHaveCount(1);
+  await expect(page.locator('[data-text-id="memory-title"]')).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "重播" })).toBeVisible();
+});
+
+test("immersive grammar scene remains available after reverting the teacher phase experiment", async ({ page }) => {
   await page.goto("/scenes/immersive-grammar-analysis");
   await expect(page.locator('[data-scene-id="immersive-grammar-analysis"]')).toBeVisible();
-  await expect(page.locator(".recreation-paper--ruled")).toBeVisible();
   await expect(page.locator("svg")).toHaveAttribute("viewBox", "0 0 1536 1450");
   await expect(page.locator('[data-text-id="full-sentence"]')).toHaveCount(1);
   await expect(page.locator('[data-annotation-id="clause-1-label"]')).toHaveCount(1);
-  await expect(page.locator('[data-annotation-id="c3-object"]')).toHaveCount(1);
-  await expect(page.getByRole("button", { name: "重播" })).toBeVisible();
 });
 
 test("existing scenes keep their own canvas protocol", async ({ page }) => {
@@ -45,6 +56,7 @@ test("existing scenes keep their own canvas protocol", async ({ page }) => {
 
   await page.goto("/scenes/skill-agent-notes");
   await expect(page.locator('[data-scene-id="skill-agent-notes"]')).toBeVisible();
+  await expect(page.locator(".recreation-paper--ruled")).toBeVisible();
   await expect(page.locator("svg")).toHaveAttribute("viewBox", "0 0 908 1280");
 });
 
@@ -70,7 +82,7 @@ test("mobile gallery and scene pages have no document-level horizontal overflow"
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
-  await page.goto("/scenes/immersive-grammar-analysis");
+  await page.goto("/scenes/long-sentence-analysis-practice");
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
   await expect(page.getByRole("complementary", { name: "历史记录" })).toBeHidden();
   await expect(page.getByRole("textbox", { name: "继续提问" })).toBeVisible();
