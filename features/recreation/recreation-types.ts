@@ -1,4 +1,4 @@
-export type RecreationElement = RecreationText | RecreationStroke | RecreationBox | RecreationMark;
+export type RecreationElement = RecreationText | RecreationStroke | RecreationBox | RecreationMark | RecreationAnnotation | RecreationViewEffect;
 export type RecreationAnimatedElement = RecreationElement & { animated?: true; order: number };
 export type RecreationStaticElement = RecreationElement & { animated: false; order?: never };
 
@@ -90,6 +90,29 @@ export type RecreationMark = RecreationElementMeta & {
   offset?: number;
   padding?: number;
   wobble?: number;
+};
+
+export type RecreationAnnotation = RecreationDynamicMeta & {
+  kind: "annotation";
+  targetId: string;
+  match: string;
+  occurrence?: number;
+  label: string;
+  position?: "above" | "below";
+  color?: string;
+  fontSize?: number;
+  width?: number;
+  offsetX?: number;
+  offsetY?: number;
+  characterJitter?: number;
+};
+
+export type RecreationViewEffect = RecreationDynamicMeta & {
+  kind: "view";
+  mode: "focus" | "restore";
+  targetIds?: string[];
+  dimOpacity?: number;
+  durationMs?: number;
 };
 
 export interface RecreationScene {
