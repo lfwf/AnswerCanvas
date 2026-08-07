@@ -1,11 +1,28 @@
 export type RecreationElement = RecreationText | RecreationStroke | RecreationBox | RecreationMark;
+export type RecreationAnimatedElement = RecreationElement & { animated?: true; order: number };
+export type RecreationStaticElement = RecreationElement & { animated: false; order?: never };
+
+export interface RecreationDynamicMeta {
+  id: string;
+  animated?: true;
+  order: number;
+}
+
+export interface RecreationStaticMeta {
+  id: string;
+  animated: false;
+  order?: never;
+}
+
+export type RecreationElementMeta = RecreationDynamicMeta | RecreationStaticMeta;
 
 export interface RecreationPaperStyle {
-  background?: string;
-  ruleColor?: string;
-  ruleSpacing?: number;
-  ruleThickness?: number;
-  ruleOffset?: number;
+  background: string;
+  pattern: "plain" | "ruled" | "dots";
+  patternColor: string;
+  spacing: number;
+  patternOffset?: number;
+  patternThickness?: number;
 }
 
 export interface RecreationTextStyle {
@@ -23,22 +40,18 @@ export interface RecreationTextStyle {
   characterJitter?: number;
 }
 
-export interface RecreationText {
-  id: string;
+export type RecreationText = RecreationElementMeta & {
   kind: "text";
-  order: number;
   x: number;
   y: number;
   width: number;
   height?: number;
   text: string;
   style?: RecreationTextStyle;
-}
+};
 
-export interface RecreationStroke {
-  id: string;
+export type RecreationStroke = RecreationElementMeta & {
   kind: "stroke";
-  order: number;
   path: string;
   color?: string;
   width?: number;
@@ -47,12 +60,10 @@ export interface RecreationStroke {
   handDrawn?: boolean;
   roughness?: number;
   bowing?: number;
-}
+};
 
-export interface RecreationBox {
-  id: string;
+export type RecreationBox = RecreationElementMeta & {
   kind: "box";
-  order: number;
   x: number;
   y: number;
   width: number;
@@ -65,12 +76,10 @@ export interface RecreationBox {
   handDrawn?: boolean;
   roughness?: number;
   bowing?: number;
-}
+};
 
-export interface RecreationMark {
-  id: string;
+export type RecreationMark = RecreationElementMeta & {
   kind: "mark";
-  order: number;
   targetId: string;
   match: string;
   occurrence?: number;
@@ -81,13 +90,24 @@ export interface RecreationMark {
   offset?: number;
   padding?: number;
   wobble?: number;
-}
+};
 
 export interface RecreationScene {
   id: string;
+  title: string;
+  description: string;
   sourceName: string;
+  createdAt: string;
   width: number;
   height: number;
-  paper?: RecreationPaperStyle;
+  paper: RecreationPaperStyle;
   elements: RecreationElement[];
+}
+
+export function isAnimatedElement(element: RecreationElement): element is RecreationAnimatedElement {
+  return element.animated !== false;
+}
+
+export function isStaticElement(element: RecreationElement): element is RecreationStaticElement {
+  return element.animated === false;
 }
