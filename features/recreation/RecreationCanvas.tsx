@@ -4,8 +4,9 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { splitGraphemes } from "@/lib/text/graphemes";
 import { drawableGraphemes, findGraphemeRange, mergeRectsByLine, type RecreationMarkSegment } from "./recreation-geometry";
 import { buildHandDrawnBoxPasses, buildHandDrawnStrokePasses, type HandDrawnPass } from "./hand-drawn-path";
+import { presentationOpacityFor } from "./recreation-presentation";
 import { characterTransform, resolveTextPlacement } from "./text-placement";
-import type { RecreationBox, RecreationElement, RecreationMark, RecreationScene, RecreationStroke, RecreationText } from "./recreation-types";
+import type { RecreationAnnotation, RecreationBox, RecreationElement, RecreationMark, RecreationScene, RecreationStroke, RecreationText } from "./recreation-types";
 import { isStaticElement } from "./recreation-types";
 import "@/features/paper/font.css";
 import "./recreation.css";
@@ -16,11 +17,13 @@ export interface RecreationCanvasProps {
   completed?: boolean;
 }
 
+interface AnnotationAnchor { x: number; y: number; width: number; height: number; }
+
 function classForUnit(unit: string) {
   return /[A-Za-z0-9]/u.test(unit) ? "recreation-char latin-handwritten" : "recreation-char";
 }
 
-function TextElement({ element, progress, scene }: { element: RecreationText; progress: number; scene: RecreationScene }) {
+function TextElement({ element, progress, scene, opacity }: { element: RecreationText; progress: number; scene: RecreationScene; opacity: number }) {
   const total = drawableGraphemes(element.text).length;
   const visible = Math.floor(total * Math.min(1, Math.max(0, progress)));
   const placement = resolveTextPlacement(element, scene.paper);
@@ -37,6 +40,7 @@ function TextElement({ element, progress, scene }: { element: RecreationText; pr
     textAlign: element.style?.textAlign,
     letterSpacing: element.style?.letterSpacing,
     transform: element.style?.rotate ? `rotate(${element.style.rotate}deg)` : undefined,
+    opacity,
   } as React.CSSProperties;
   const jitter = element.style?.characterJitter ?? 0.66;
   return <div className="recreation-text" data-text-id={element.id} style={style} aria-label={element.text}>
@@ -48,6 +52,20 @@ function TextElement({ element, progress, scene }: { element: RecreationText; pr
       })}
       {!line && <span aria-hidden="true">\u00a0</span>}
     </div>)}
+  </div>;
+}
+
+function AnnotationElement({ element, progress, anchor, opacity }: { element: RecreationAnnotation; progress: number; anchor?: AnnotationAnchor; opacity: number }) {
+  const units = splitGraphemes(element.label);
+  const visible = Math.floor(units.length * Math.min(1, Math.max(0, progress)));
+  const fontSize = element.fontSize ?? 15;
+  const width = element.width ?? Math.max(92, Math.min(260, units.length * fontSize * 0.78));
+  const position = element.position ?? "above";
+  const left = anchor ? anchor.x + anchor.width / 2 - width / 2 + (element.offsetX ?? 0) : 0;
+  const top = anchor ? (position === "above" ? anchor.y - fontSize * 1.65 : anchor.y + anchor.height + 8) + (element.offsetY ?? 0) : 0;
+  const jitter = element.characterJitter ?? 0.42;
+  return <div className="recreation-annotation" data-annotation-id={element.id} aria-label={element.label} style={{ left, top, width, color: element.color ?? "#244f9d", fontSize, opacity: anchor ? opacity : 0 }}>
+    {units.map((unit, index) => <span className={classForUnit(unit)} key={`${element.id}:${index}`} style={{ visibility: index < visible ? "visible" : "hidden", transform: unit.trim() ? characterTransform(element.id, index, jitter) : undefined }} aria-hidden="true">{unit === " " ? "\u00a0" : unit}</span>)}
   </div>;
 }
 
@@ -99,9 +117,10 @@ function SvgElements({ scene, elements, progress, completed, markGeometry }: { s
   return <svg className="recreation-ink" viewBox={`0 0 ${scene.width} ${scene.height}`} data-scene-viewbox={`0 0 ${scene.width} ${scene.height}`} aria-hidden="true">
     {elements.map((element) => {
       const value = valueFor(element, progress, completed);
-      if (element.kind === "stroke") return <DrawnPasses key={element.id} element={element} passes={strokePasses(element)} progress={value} color={element.color ?? "#171717"} width={element.width ?? 1.4} opacity={element.opacity ?? 1} dash={element.dash} />;
-      if (element.kind === "box") return <DrawnPasses key={element.id} element={element} passes={boxPasses(element)} progress={value} color={element.stroke ?? "#171717"} width={element.strokeWidth ?? 1.4} opacity={1} dash={element.dash} fill={element.fill} />;
-      if (element.kind === "mark") return <MarkPaths key={element.id} mark={element} segments={markGeometry[element.id] ?? []} progress={value} />;
+      const opacity = presentationOpacityFor(element, scene, progress, completed);
+      if (element.kind === "stroke") return <g key={element.id} opacity={opacity}><DrawnPasses element={element} passes={strokePasses(element)} progress={value} color={element.color ?? "#171717"} width={element.width ?? 1.4} opacity={element.opacity ?? 1} dash={element.dash} /></g>;
+      if (element.kind === "box") return <g key={element.id} opacity={opacity}><DrawnPasses element={element} passes={boxPasses(element)} progress={value} color={element.stroke ?? "#171717"} width={element.strokeWidth ?? 1.4} opacity={1} dash={element.dash} fill={element.fill} /></g>;
+      if (element.kind === "mark") return <g key={element.id} opacity={opacity}><MarkPaths mark={element} segments={markGeometry[element.id] ?? []} progress={value} /></g>;
       return null;
     })}
   </svg>;
@@ -110,6 +129,7 @@ function SvgElements({ scene, elements, progress, completed, markGeometry }: { s
 export function RecreationCanvas({ scene, progress, completed = false }: RecreationCanvasProps) {
   const paperRef = useRef<HTMLElement>(null);
   const [markGeometry, setMarkGeometry] = useState<Record<string, RecreationMarkSegment[]>>({});
+  const [annotationGeometry, setAnnotationGeometry] = useState<Record<string, AnnotationAnchor>>({});
   const elements = useMemo(() => scene.elements, [scene.elements]);
 
   useLayoutEffect(() => {
@@ -122,14 +142,16 @@ export function RecreationCanvas({ scene, progress, completed = false }: Recreat
       if (!paperRect.width || !paperRect.height) return;
       const scaleX = paperRect.width / scene.width;
       const scaleY = paperRect.height / scene.height;
-      const geometry: Record<string, RecreationMarkSegment[]> = {};
+      const marks: Record<string, RecreationMarkSegment[]> = {};
+      const annotations: Record<string, AnnotationAnchor> = {};
       const textElements = new Map(elements.filter((element): element is RecreationText => element.kind === "text").map((element) => [element.id, element]));
-      for (const mark of elements.filter((element): element is RecreationMark => element.kind === "mark")) {
-        const textElement = textElements.get(mark.targetId);
-        const range = textElement ? findGraphemeRange(textElement.text, mark.match, mark.occurrence) : null;
-        const target = Array.from(paper.querySelectorAll<HTMLElement>("[data-text-id]")).find((node) => node.dataset.textId === mark.targetId);
-        if (!target || !range) { geometry[mark.id] = []; continue; }
-        const rects = Array.from(target.querySelectorAll<HTMLElement>("[data-grapheme-index]"))
+      const nodes = new Map(Array.from(paper.querySelectorAll<HTMLElement>("[data-text-id]")).map((node) => [node.dataset.textId ?? "", node]));
+      const rectsFor = (targetId: string, match: string, occurrence?: number) => {
+        const textElement = textElements.get(targetId);
+        const range = textElement ? findGraphemeRange(textElement.text, match, occurrence) : null;
+        const target = nodes.get(targetId);
+        if (!target || !range) return [];
+        return Array.from(target.querySelectorAll<HTMLElement>("[data-grapheme-index]"))
           .filter((node) => { const index = Number(node.dataset.graphemeIndex); return index >= range.start && index <= range.end; })
           .map((node) => {
             const rect = node.getBoundingClientRect();
@@ -139,9 +161,19 @@ export function RecreationCanvas({ scene, progress, completed = false }: Recreat
             const height = rect.height / scaleY;
             return { left, top, right: left + width, bottom: top + height, width, height };
           });
-        geometry[mark.id] = mergeRectsByLine(rects);
+      };
+      for (const mark of elements.filter((element): element is RecreationMark => element.kind === "mark")) marks[mark.id] = mergeRectsByLine(rectsFor(mark.targetId, mark.match, mark.occurrence));
+      for (const annotation of elements.filter((element): element is RecreationAnnotation => element.kind === "annotation")) {
+        const segments = mergeRectsByLine(rectsFor(annotation.targetId, annotation.match, annotation.occurrence));
+        if (!segments.length) continue;
+        const left = Math.min(...segments.map((segment) => segment.x));
+        const top = Math.min(...segments.map((segment) => segment.y));
+        const right = Math.max(...segments.map((segment) => segment.x + segment.width));
+        const bottom = Math.max(...segments.map((segment) => segment.y + segment.height));
+        annotations[annotation.id] = { x: left, y: top, width: right - left, height: bottom - top };
       }
-      setMarkGeometry(geometry);
+      setMarkGeometry(marks);
+      setAnnotationGeometry(annotations);
     };
     measure();
     if (typeof document !== "undefined" && "fonts" in document) void document.fonts.ready.then(measure, measure);
@@ -160,6 +192,7 @@ export function RecreationCanvas({ scene, progress, completed = false }: Recreat
 
   return <article ref={paperRef} className={`recreation-paper recreation-paper--${scene.paper.pattern}`} style={paperStyle} data-scene-id={scene.id}>
     <SvgElements scene={scene} elements={elements} progress={progress} completed={completed} markGeometry={markGeometry} />
-    {elements.filter((element): element is RecreationText => element.kind === "text").map((element) => <TextElement key={element.id} element={element} progress={valueFor(element, progress, completed)} scene={scene} />)}
+    {elements.filter((element): element is RecreationText => element.kind === "text").map((element) => <TextElement key={element.id} element={element} progress={valueFor(element, progress, completed)} opacity={presentationOpacityFor(element, scene, progress, completed)} scene={scene} />)}
+    {elements.filter((element): element is RecreationAnnotation => element.kind === "annotation").map((element) => <AnnotationElement key={element.id} element={element} progress={valueFor(element, progress, completed)} anchor={annotationGeometry[element.id]} opacity={presentationOpacityFor(element, scene, progress, completed)} />)}
   </article>;
 }
