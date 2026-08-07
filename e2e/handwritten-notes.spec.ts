@@ -5,7 +5,18 @@ test("gallery exposes both canonical recreation scenes", async ({ page }) => {
   await expect(page.getByRole("link", { name: /关于 AI 的核心概念与发展/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /Skill 与 Agent 课堂笔记/ })).toBeVisible();
   await expect(page.locator("[data-scene-id]")).toHaveCount(2);
-  await expect(page.locator(".recreation-toolbar")).toHaveCount(0);
+  await expect(page.locator(".answer-controls")).toHaveCount(0);
+});
+
+test("scene page is presented as a conversation with history, prompt and composer", async ({ page }) => {
+  await page.goto("/scenes/ai-core-concepts");
+  await expect(page.getByRole("complementary", { name: "历史记录" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /关于 AI 的核心概念与发展/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Skill 与 Agent 课堂笔记/ })).toBeVisible();
+  await expect(page.locator(".user-message")).toContainText("帮我整理一份关于 AI 核心概念与发展的手写笔记");
+  await expect(page.getByRole("article", { name: "AnswerCanvas 手写回答" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "继续提问" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "发送" })).toBeVisible();
 });
 
 test("each scene opens with its own canvas protocol", async ({ page }) => {
@@ -45,4 +56,6 @@ test("mobile gallery and scene pages have no document-level horizontal overflow"
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
   await page.goto("/scenes/ai-core-concepts");
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
+  await expect(page.getByRole("complementary", { name: "历史记录" })).toBeHidden();
+  await expect(page.getByRole("textbox", { name: "继续提问" })).toBeVisible();
 });

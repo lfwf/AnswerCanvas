@@ -52,10 +52,14 @@ export function timelineElements(scene: RecreationScene): RecreationAnimatedElem
   return scene.elements.filter(isAnimatedElement).sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
 }
 
-export function RecreationStage({ scene }: { scene: RecreationScene }) {
+function scenePrompt(scene: RecreationScene) {
+  return scene.prompt?.trim() || `请把「${scene.title}」整理成一份清晰的手写笔记。`;
+}
+
+export function RecreationStage({ scene, history = [] }: { scene: RecreationScene; history?: RecreationScene[] }) {
   const reducedMotion = useReducedMotion();
   const fontsReady = useFontsReady();
-  const viewportRef = useRef<HTMLDivElement>(null);
+  const canvasViewportRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<RecreationPlayer | null>(null);
   const speedRef = useRef(1);
   const [progress, setProgress] = useState<Record<string, number>>({});
@@ -64,11 +68,13 @@ export function RecreationStage({ scene }: { scene: RecreationScene }) {
   const [speed, setSpeed] = useState(1);
   const elements = useMemo(() => timelineElements(scene), [scene]);
   const events = useMemo<RecreationEvent[]>(() => elements.map((element) => ({ id: element.id, durationMs: durationForElement(element) })), [elements]);
+  const historyScenes = history.length ? history : [scene];
+  const prompt = scenePrompt(scene);
 
   useEffect(() => {
-    const viewport = viewportRef.current;
+    const viewport = canvasViewportRef.current;
     if (!viewport || typeof ResizeObserver === "undefined") return;
-    const update = (width: number) => setScale(Math.min(1, Math.max(0.28, (width - 36) / scene.width)));
+    const update = (width: number) => setScale(Math.min(1, Math.max(0.28, (width - 4) / scene.width)));
     update(viewport.clientWidth);
     const observer = new ResizeObserver(([entry]) => update(entry.contentRect.width));
     observer.observe(viewport);
@@ -127,25 +133,62 @@ export function RecreationStage({ scene }: { scene: RecreationScene }) {
     playerRef.current?.setSpeed(next);
   }, []);
 
-  return <main className="recreation-shell">
-    <header className="recreation-brand" aria-label="AnswerCanvas">
-      <Link className="brand-mark" href="/" aria-label="返回场景列表">AC</Link>
-      <div><h1>AnswerCanvas</h1><p>{scene.title}</p></div>
-    </header>
-    <aside className="recreation-handoff"><strong>图片转手写</strong><span>发送新图片后会新增独立场景并保留已有场景。</span><small>{scene.sourceName}</small></aside>
-    <section className="recreation-viewport" ref={viewportRef} aria-label={`${scene.title} 手写复刻画布`}>
-      <div className="recreation-paper-shell" style={{ width: scene.width * scale, height: scene.height * scale }}>
-        <div className="recreation-canvas-transform" style={{ width: scene.width, height: scene.height, transform: `scale(${scale})` }}>
-          <RecreationCanvas scene={scene} progress={progress} />
-        </div>
+  const statusLabel = !fontsReady ? "正在加载字体" : status === "complete" ? "已完成" : status === "paused" ? "已暂停" : status === "playing" ? "正在书写" : "准备开始";
+
+  return <main className="conversation-shell">
+    <aside className="conversation-sidebar" aria-label="历史记录">
+      <div className="conversation-brand">
+        <Link className="brand-mark" href="/" aria-label="AnswerCanvas 场景列表">AC</Link>
+        <div><h1>AnswerCanvas</h1><p>Handwritten answers</p></div>
       </div>
+      <Link className="new-conversation" href="/"><span>＋</span> 新对话</Link>
+      <p className="history-heading">历史记录</p>
+      <nav className="history-list">
+        {historyScenes.map((item) => <Link className={`history-item${item.id === scene.id ? " is-active" : ""}`} href={`/scenes/${item.id}`} key={item.id} aria-current={item.id === scene.id ? "page" : undefined}>
+          <span>{item.title}</span><small>{item.createdAt}</small>
+        </Link>)}
+      </nav>
+      <div className="sidebar-note"><strong>图片转手写</strong><span>新图片会生成新的历史场景，已有回答会一直保留。</span></div>
+    </aside>
+
+    <section className="conversation-panel">
+      <header className="conversation-topbar">
+        <div className="conversation-mobile-brand"><span className="brand-mark">AC</span><strong>AnswerCanvas</strong></div>
+        <div className="conversation-title"><strong>{scene.title}</strong><span>图片手写回答</span></div>
+        <Link className="conversation-scenes-link" href="/">场景列表</Link>
+      </header>
+
+      <div className="conversation-thread">
+        <div className="user-message-row"><div className="user-message">{prompt}</div></div>
+
+        <article className="assistant-message" aria-label="AnswerCanvas 手写回答">
+          <header className="assistant-message-header">
+            <div className="assistant-identity"><span className="assistant-avatar">AC</span><div><strong>AnswerCanvas</strong><span>{statusLabel}</span></div></div>
+            <nav className="answer-controls" aria-label="播放控制">
+              <button type="button" onClick={togglePlay} disabled={status === "complete" || !fontsReady}>{status === "playing" ? "暂停" : status === "complete" ? "完成" : "继续"}</button>
+              <button type="button" onClick={replay} disabled={!fontsReady}>重播</button>
+              <select aria-label="播放速度" value={speed} onChange={(event) => changeSpeed(Number(event.target.value))}><option value="0.5">0.5x</option><option value="1">1x</option><option value="1.5">1.5x</option><option value="2">2x</option></select>
+            </nav>
+          </header>
+
+          <div className="answer-canvas-viewport" ref={canvasViewportRef}>
+            <div className="recreation-paper-shell" style={{ width: scene.width * scale, height: scene.height * scale }}>
+              <div className="recreation-canvas-transform" style={{ width: scene.width, height: scene.height, transform: `scale(${scale})` }}>
+                <RecreationCanvas scene={scene} progress={progress} />
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <form className="conversation-composer" onSubmit={(event) => event.preventDefault()} aria-label="模拟聊天输入框">
+        <div className="composer-box">
+          <button className="composer-plus" type="button" aria-label="添加内容">＋</button>
+          <textarea rows={1} aria-label="继续提问" placeholder="继续提问…" />
+          <button className="composer-send" type="submit" aria-label="发送">↑</button>
+        </div>
+        <p>演示界面 · 当前回答来自图片复刻场景</p>
+      </form>
     </section>
-    <div className="recreation-status">{!fontsReady ? "正在加载字体" : status === "complete" ? "已完成" : status === "paused" ? "已暂停" : status === "playing" ? "正在书写" : "准备开始"}</div>
-    <nav className="recreation-toolbar" aria-label="播放控制">
-      <Link className="recreation-toolbar-link" href="/">场景列表</Link>
-      <button type="button" onClick={togglePlay} disabled={status === "complete" || !fontsReady}>{status === "playing" ? "暂停" : "继续"}</button>
-      <button type="button" onClick={replay} disabled={!fontsReady}>重播</button>
-      <select aria-label="播放速度" value={speed} onChange={(event) => changeSpeed(Number(event.target.value))}><option value="0.5">0.5x</option><option value="1">1x</option><option value="1.5">1.5x</option><option value="2">2x</option></select>
-    </nav>
   </main>;
 }
