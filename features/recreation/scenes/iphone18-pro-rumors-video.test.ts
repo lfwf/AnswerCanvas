@@ -20,17 +20,28 @@ describe("iPhone 18 Pro paged rumor video scene", () => {
     expect(iphone18ProRumorsVideoScene.pages?.map((page) => page.id)).toEqual(["cover", "chip-ai", "memory", "display", "camera", "battery", "connectivity", "appearance", "summary"]);
   });
 
-  it("writes chip facts before constructing and filling the performance chart", () => {
-    expect(order("chip-bullets")).toBeLessThan(order("perf-label"));
+  it("writes chip facts, highlights them, then constructs the performance chart with independent ticks", () => {
+    expect(order("chip-bullets")).toBeLessThan(order("chip-hi-2nm"));
+    expect(order("chip-hi-ai")).toBeLessThan(order("perf-label"));
     expect(order("perf-label")).toBeLessThan(order("perf-bar-frame"));
     expect(order("perf-bar-frame")).toBeLessThan(order("perf-axis"));
-    expect(order("perf-axis")).toBeLessThan(order("perf-ticks"));
-    expect(order("perf-ticks")).toBeLessThan(order("perf-fill"));
+    expect(order("perf-axis")).toBeLessThan(order("perf-tick-left"));
+    expect(order("perf-tick-left")).toBeLessThan(order("perf-tick-mid"));
+    expect(order("perf-tick-mid")).toBeLessThan(order("perf-tick-right"));
+    expect(order("perf-tick-right")).toBeLessThan(order("perf-fill"));
     expect(order("perf-fill")).toBeLessThan(order("perf-value"));
     expect(order("power-bar-frame")).toBeLessThan(order("power-axis"));
-    expect(order("power-axis")).toBeLessThan(order("power-ticks"));
-    expect(order("power-ticks")).toBeLessThan(order("power-fill"));
+    expect(order("power-axis")).toBeLessThan(order("power-tick-left"));
+    expect(order("power-tick-left")).toBeLessThan(order("power-tick-mid"));
+    expect(order("power-tick-mid")).toBeLessThan(order("power-tick-right"));
+    expect(order("power-tick-right")).toBeLessThan(order("power-fill"));
     expect(order("power-fill")).toBeLessThan(order("power-value"));
+  });
+
+  it("keeps only audience-facing copy on the chip and display pages", () => {
+    expect(iphone18ProRumorsVideoScene.elements.some((element) => element.id === "chip-note")).toBe(false);
+    expect(iphone18ProRumorsVideoScene.elements.some((element) => element.id === "memory-explain")).toBe(false);
+    expect(iphone18ProRumorsVideoScene.elements.some((element) => element.id === "display-summary")).toBe(false);
   });
 
   it("finishes each page before turning to the next one", () => {
