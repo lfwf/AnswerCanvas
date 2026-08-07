@@ -28,6 +28,10 @@ function TextElement({ element, progress, scene, opacity }: { element: Recreatio
   const total = drawableGraphemes(element.text).length;
   const visible = Math.floor(total * Math.min(1, Math.max(0, progress)));
   const placement = resolveTextPlacement(element, scene.paper);
+  const isPagedVideo = Boolean(scene.pages?.length);
+  const fontScale = isPagedVideo ? 1.12 : 1;
+  const lineScale = isPagedVideo ? 1.04 : 1;
+  const resolvedLineHeight = placement.lineHeight ?? element.style?.lineHeight;
   let graphemeIndex = 0;
   const style = {
     left: placement.left,
@@ -35,8 +39,8 @@ function TextElement({ element, progress, scene, opacity }: { element: Recreatio
     width: element.width,
     height: element.height,
     color: element.style?.color,
-    fontSize: element.style?.fontSize,
-    lineHeight: placement.lineHeight ? `${placement.lineHeight}px` : element.style?.lineHeight ? `${element.style.lineHeight}px` : undefined,
+    fontSize: element.style?.fontSize ? element.style.fontSize * fontScale : undefined,
+    lineHeight: resolvedLineHeight ? `${resolvedLineHeight * lineScale}px` : undefined,
     fontWeight: element.style?.fontWeight,
     textAlign: element.style?.textAlign,
     letterSpacing: element.style?.letterSpacing,
