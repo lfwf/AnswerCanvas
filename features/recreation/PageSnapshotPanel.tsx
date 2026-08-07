@@ -12,26 +12,37 @@ interface PageSnapshot {
   dataUrl: string;
 }
 
+interface SaveResponse {
+  ok: boolean;
+  directory?: string;
+  error?: string;
+}
+
 function nextPaint() {
   return new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
 }
 
 export function PageSnapshotPanel({ scene, ready }: { scene: RecreationScene; ready: boolean }) {
   const sourceRef = useRef<HTMLDivElement>(null);
-  const generatedSceneRef = useRef<string | null>(null);
+  const generatedRevisionRef = useRef<string | null>(null);
   const [snapshots, setSnapshots] = useState<PageSnapshot[]>([]);
-  const [state, setState] = useState<"idle" | "generating" | "ready" | "error">("idle");
+  const [state, setState] = useState<"idle" | "generating" | "saving" | "ready" | "error">("idle");
+  const [savedDirectory, setSavedDirectory] = useState<string | null>(null);
+  const [saveWarning, setSaveWarning] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const pages = scene.pages ?? [];
-  const shouldRenderSource = ready && state !== "ready" && state !== "error";
+  const revisionKey = `${scene.id}:${scene.snapshotRevision ?? "1"}`;
+  const shouldRenderSource = ready && (state === "idle" || state === "generating");
 
   useEffect(() => {
-    if (!ready || !pages.length || generatedSceneRef.current === scene.id) return;
-    generatedSceneRef.current = scene.id;
+    if (!ready || !pages.length || generatedRevisionRef.current === revisionKey) return;
+    generatedRevisionRef.current = revisionKey;
     let cancelled = false;
 
     const generate = async () => {
       setState("generating");
+      setSaveWarning(null);
+      setSavedDirectory(null);
       try {
         if (typeof document !== "undefined" && "fonts" in document) await document.fonts.ready;
         await nextPaint();
@@ -50,10 +61,30 @@ export function PageSnapshotPanel({ scene, ready }: { scene: RecreationScene; re
           });
           result.push({ pageId: page.id, title: page.title, dataUrl });
         }
-        if (!cancelled) {
-          setSnapshots(result);
-          setState("ready");
+        if (cancelled) return;
+        setSnapshots(result);
+        setState("saving");
+
+        try {
+          const response = await fetch("/api/recreation/snapshots", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              sceneId: scene.id,
+              revision: scene.snapshotRevision ?? "1",
+              pages: result,
+            }),
+          });
+          const payload = await response.json() as SaveResponse;
+          if (!response.ok || !payload.ok || !payload.directory) throw new Error(payload.error || "snapshot save failed");
+          if (!cancelled) setSavedDirectory(payload.directory);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "自动保存失败";
+          console.error("Failed to persist page snapshots", error);
+          if (!cancelled) setSaveWarning(message);
         }
+
+        if (!cancelled) setState("ready");
       } catch (error) {
         console.error("Failed to generate page snapshots", error);
         if (!cancelled) setState("error");
@@ -62,13 +93,15 @@ export function PageSnapshotPanel({ scene, ready }: { scene: RecreationScene; re
 
     void generate();
     return () => { cancelled = true; };
-  }, [pages, ready, scene.id, scene.paper.background]);
+  }, [pages, ready, revisionKey, scene.id, scene.paper.background, scene.snapshotRevision]);
 
   if (!pages.length) return null;
 
+  const buttonLabel = state === "generating" ? "生成截图…" : state === "saving" ? "保存截图…" : state === "error" ? "截图失败" : state === "ready" ? savedDirectory ? `已保存 ${snapshots.length} 张` : `最终截图 ${snapshots.length}` : "首轮结束后截图";
+
   return <>
     <button className="snapshot-trigger" type="button" onClick={() => setOpen(true)} disabled={state !== "ready"}>
-      {state === "generating" ? "生成截图…" : state === "error" ? "截图失败" : state === "ready" ? `最终截图 ${snapshots.length}` : "首轮结束后截图"}
+      {buttonLabel}
     </button>
 
     {shouldRenderSource ? <div className="page-snapshot-source" ref={sourceRef} aria-hidden="true">
@@ -79,7 +112,15 @@ export function PageSnapshotPanel({ scene, ready }: { scene: RecreationScene; re
 
     {open && state === "ready" ? <div className="snapshot-modal" role="dialog" aria-modal="true" aria-label="每页最终截图">
       <div className="snapshot-modal-card">
-        <header><div><strong>每页最终截图</strong><span>{snapshots.length} 页 · 首轮播放结束后自动生成</span></div><button type="button" onClick={() => setOpen(false)} aria-label="关闭截图面板">×</button></header>
+        <header>
+          <div>
+            <strong>每页最终截图</strong>
+            <span>{snapshots.length} 页 · 每次首轮完成都会覆盖旧版本</span>
+            {savedDirectory ? <code>{savedDirectory}</code> : null}
+            {saveWarning ? <em>已生成图片，但自动保存失败：{saveWarning}</em> : null}
+          </div>
+          <button type="button" onClick={() => setOpen(false)} aria-label="关闭截图面板">×</button>
+        </header>
         <div className="snapshot-grid">
           {snapshots.map((snapshot, index) => <figure key={snapshot.pageId}>
             <img src={snapshot.dataUrl} alt={`${index + 1}. ${snapshot.title}`} />
