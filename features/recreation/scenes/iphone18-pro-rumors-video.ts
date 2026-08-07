@@ -1,4 +1,4 @@
-import type { RecreationBox, RecreationPageTurn, RecreationScene, RecreationStroke, RecreationText, RecreationTextStyle, RecreationViewEffect } from "../recreation-types";
+import type { RecreationBox, RecreationMark, RecreationPageTurn, RecreationScene, RecreationStroke, RecreationText, RecreationTextStyle, RecreationViewEffect } from "../recreation-types";
 
 const ink = "#171717";
 const blue = "#1754a7";
@@ -7,21 +7,27 @@ const green = "#158a4e";
 const purple = "#7e48b5";
 const red = "#d64535";
 const gray = "#66645f";
+const yellowHighlight = "rgba(246,207,76,.42)";
+const blueHighlight = "rgba(86,150,226,.30)";
+const greenHighlight = "rgba(70,177,118,.28)";
+const purpleHighlight = "rgba(157,103,207,.25)";
 
 const text = (pageId: string, id: string, order: number, x: number, y: number, width: number, value: string, style: RecreationTextStyle = {}): RecreationText => ({ id, kind: "text", pageId, order, x, y, width, text: value, style });
 const stroke = (pageId: string, id: string, order: number, path: string, style: Omit<RecreationStroke, "id" | "kind" | "order" | "animated" | "pageId" | "path"> = {}): RecreationStroke => ({ id, kind: "stroke", pageId, order, path, ...style });
 const box = (pageId: string, id: string, order: number, x: number, y: number, width: number, height: number, style: Omit<RecreationBox, "id" | "kind" | "order" | "animated" | "pageId" | "x" | "y" | "width" | "height"> = {}): RecreationBox => ({ id, kind: "box", pageId, order, x, y, width, height, ...style });
+const highlight = (pageId: string, id: string, order: number, targetId: string, match: string, color = yellowHighlight): RecreationMark => ({ id, kind: "mark", pageId, order, targetId, match, mark: "highlight", color, opacity: .95, padding: 2, wobble: 1.1 });
 const hold = (pageId: string, id: string, order: number, durationMs = 650): RecreationViewEffect => ({ id, kind: "view", pageId, order, mode: "restore", durationMs });
 const turn = (id: string, order: number, pageId: string, durationMs = 760): RecreationPageTurn => ({ id, kind: "page", order, pageId, durationMs, transition: "slide" });
+const tickText = (pageId: string, id: string, order: number, centerX: number, y: number, value: string) => text(pageId, id, order, centerX - 66, y, 132, value, { fontSize: 24, lineHeight: 34, textAlign: "center" });
 
-function scribblePath(x: number, y: number, width: number, height: number, rows = 9) {
-  const gap = height / Math.max(1, rows - 1);
-  const parts = [`M ${x} ${y}`];
-  for (let row = 0; row < rows; row += 1) {
-    const yy = y + row * gap;
-    const xx = row % 2 === 0 ? x + width : x;
+function scribblePath(x: number, y: number, width: number, height: number, columns = 24) {
+  const gap = width / Math.max(1, columns - 1);
+  const parts = [`M ${x} ${y + height}`];
+  for (let column = 0; column < columns; column += 1) {
+    const xx = x + column * gap;
+    const yy = column % 2 === 0 ? y : y + height;
     parts.push(`L ${xx} ${yy}`);
-    if (row < rows - 1) parts.push(`L ${xx} ${yy + gap}`);
+    if (column < columns - 1) parts.push(`L ${xx + gap} ${yy}`);
   }
   return parts.join(" ");
 }
@@ -59,54 +65,66 @@ export const iphone18ProRumorsVideoScene: RecreationScene = {
     text("cover", "cover-title", 10, 70, 330, 760, "iPhone 18 Pro\n爆料参数笔记", { color: ink, fontSize: 72, lineHeight: 100, fontWeight: 650, textAlign: "center", characterJitter: .55 }),
     stroke("cover", "cover-underline", 11, "M 150 555 Q 455 538 755 552", { color: blue, width: 4, roughness: 1.1, bowing: 1.3 }),
     text("cover", "cover-rumor", 12, 140, 610, 620, "Rumors / 非官方，仅供参考", { color: gray, fontSize: 34, lineHeight: 44, textAlign: "center" }),
-    text("cover", "cover-guide", 13, 130, 815, 640, "7 个模块 · 一页一个重点\n芯片 / 内存 / 屏幕 / 影像\n续航 / 通信 / 外观", { color: blue, fontSize: 34, lineHeight: 68, textAlign: "center" }),
+    text("cover", "cover-guide", 13, 130, 815, 640, "芯片 / 内存 / 屏幕 / 影像\n续航 / 通信 / 外观", { color: blue, fontSize: 36, lineHeight: 72, textAlign: "center" }),
     hold("cover", "cover-hold", 14, 760),
     turn("turn-chip", 15, "chip-ai"),
 
     ...pageTitle("chip-ai", 100, "1", "芯片 / AI", blue),
-    text("chip-ai", "chip-bullets", 103, 86, 210, 720, "• A20 Pro（传闻）\n• 2nm 工艺\n• 性能：约 +15%\n• 功耗：约 -30%\n• 重点：端侧 AI 更强", { fontSize: 37, lineHeight: 72 }),
+    text("chip-ai", "chip-bullets", 103, 86, 210, 720, "• A20 Pro（传闻）\n• 2nm 工艺\n• 性能：约 +15%\n• 功耗：约 -30%\n• 端侧 AI 更强", { fontSize: 37, lineHeight: 72 }),
+    highlight("chip-ai", "chip-hi-2nm", 103.1, "chip-bullets", "2nm 工艺"),
+    highlight("chip-ai", "chip-hi-perf", 103.2, "chip-bullets", "+15%", blueHighlight),
+    highlight("chip-ai", "chip-hi-power", 103.3, "chip-bullets", "-30%", greenHighlight),
+    highlight("chip-ai", "chip-hi-ai", 103.4, "chip-bullets", "端侧 AI 更强", yellowHighlight),
     text("chip-ai", "perf-label", 104, 86, 660, 220, "性能提升", { fontSize: 34, lineHeight: 44 }),
     box("chip-ai", "perf-bar-frame", 105, 270, 670, 430, 74, { stroke: ink, strokeWidth: 2.2, radius: 3, roughness: .7 }),
     stroke("chip-ai", "perf-axis", 106, "M 270 780 L 700 780 M 270 765 L 270 795 M 485 765 L 485 795 M 700 765 L 700 795", { color: ink, width: 2.1, roughness: .55 }),
-    text("chip-ai", "perf-ticks", 107, 240, 808, 500, "-20%                    0                    +20%", { fontSize: 24, lineHeight: 34 }),
-    stroke("chip-ai", "perf-fill", 108, scribblePath(275, 679, 320, 55, 9), { color: blue, width: 7, opacity: .9, handDrawn: false }),
+    tickText("chip-ai", "perf-tick-left", 107, 270, 808, "-20%"),
+    tickText("chip-ai", "perf-tick-mid", 107.1, 485, 808, "0"),
+    tickText("chip-ai", "perf-tick-right", 107.2, 700, 808, "+20%"),
+    stroke("chip-ai", "perf-fill", 108, scribblePath(275, 679, 320, 55), { color: blue, width: 7, opacity: .9, handDrawn: false }),
     text("chip-ai", "perf-value", 109, 715, 680, 130, "+15%", { color: blue, fontSize: 38, lineHeight: 48, fontWeight: 620 }),
     text("chip-ai", "power-label", 110, 86, 925, 220, "功耗降低", { fontSize: 34, lineHeight: 44 }),
     box("chip-ai", "power-bar-frame", 111, 270, 935, 430, 74, { stroke: ink, strokeWidth: 2.2, radius: 3, roughness: .7 }),
     stroke("chip-ai", "power-axis", 112, "M 270 1045 L 700 1045 M 270 1030 L 270 1060 M 485 1030 L 485 1060 M 700 1030 L 700 1060", { color: ink, width: 2.1, roughness: .55 }),
-    text("chip-ai", "power-ticks", 113, 240, 1074, 500, "-40%                 -20%                         0", { fontSize: 24, lineHeight: 34 }),
-    stroke("chip-ai", "power-fill", 114, scribblePath(275, 944, 250, 55, 9), { color: green, width: 7, opacity: .9, handDrawn: false }),
+    tickText("chip-ai", "power-tick-left", 113, 270, 1074, "-40%"),
+    tickText("chip-ai", "power-tick-mid", 113.1, 485, 1074, "-20%"),
+    tickText("chip-ai", "power-tick-right", 113.2, 700, 1074, "0"),
+    stroke("chip-ai", "power-fill", 114, scribblePath(275, 944, 250, 55), { color: green, width: 7, opacity: .9, handDrawn: false }),
     text("chip-ai", "power-value", 115, 715, 945, 130, "-30%", { color: green, fontSize: 38, lineHeight: 48, fontWeight: 620 }),
-    text("chip-ai", "chip-note", 116, 110, 1240, 680, "先看参数，再看两张图：\n性能往右走，功耗往左降。", { color: gray, fontSize: 30, lineHeight: 54, textAlign: "center" }),
     hold("chip-ai", "chip-hold", 117),
     turn("turn-memory", 118, "memory"),
 
     ...pageTitle("memory", 200, "2", "内存", orange),
     text("memory", "memory-bullets", 203, 92, 245, 710, "• 12GB RAM（传闻）\n• 多任务 / AI 更从容", { fontSize: 42, lineHeight: 84 }),
-    text("memory", "memory-explain", 204, 100, 485, 700, "这一页只看一个变化：\n容量从 8GB → 12GB", { color: gray, fontSize: 34, lineHeight: 62, textAlign: "center" }),
-    box("memory", "memory-panel", 205, 90, 700, 720, 330, { stroke: orange, strokeWidth: 2.2, dash: "12 10", radius: 28, roughness: .8 }),
-    box("memory", "memory-8-box", 206, 155, 805, 210, 120, { stroke: orange, strokeWidth: 2.8, radius: 22, roughness: 1 }),
-    text("memory", "memory-8", 207, 155, 828, 210, "8GB", { fontSize: 52, lineHeight: 64, textAlign: "center" }),
-    stroke("memory", "memory-arrow", 208, "M 405 865 L 535 865 M 535 865 L 510 842 M 535 865 L 510 888", { color: orange, width: 4, roughness: 1 }),
-    box("memory", "memory-12-box", 209, 575, 805, 210, 120, { stroke: orange, strokeWidth: 2.8, radius: 22, roughness: 1 }),
-    text("memory", "memory-12", 210, 575, 828, 210, "12GB", { fontSize: 52, lineHeight: 64, textAlign: "center" }),
-    text("memory", "memory-bottom", 211, 150, 1110, 600, "更大的内存空间\n→ 多任务切换更轻松\n→ 本地 AI 更有余量", { color: orange, fontSize: 36, lineHeight: 68, textAlign: "center" }),
+    highlight("memory", "memory-hi-12gb", 203.1, "memory-bullets", "12GB RAM"),
+    box("memory", "memory-panel", 205, 90, 650, 720, 330, { stroke: orange, strokeWidth: 2.2, dash: "12 10", radius: 28, roughness: .8 }),
+    box("memory", "memory-8-box", 206, 155, 755, 210, 120, { stroke: orange, strokeWidth: 2.8, radius: 22, roughness: 1 }),
+    text("memory", "memory-8", 207, 155, 778, 210, "8GB", { fontSize: 52, lineHeight: 64, textAlign: "center" }),
+    stroke("memory", "memory-arrow", 208, "M 405 815 L 535 815 M 535 815 L 510 792 M 535 815 L 510 838", { color: orange, width: 4, roughness: 1 }),
+    box("memory", "memory-12-box", 209, 575, 755, 210, 120, { stroke: orange, strokeWidth: 2.8, radius: 22, roughness: 1 }),
+    text("memory", "memory-12", 210, 575, 778, 210, "12GB", { fontSize: 52, lineHeight: 64, textAlign: "center" }),
+    text("memory", "memory-bottom", 211, 150, 1050, 600, "多任务切换更轻松\n本地 AI 更有余量", { color: orange, fontSize: 38, lineHeight: 72, textAlign: "center" }),
     hold("memory", "memory-hold", 212),
     turn("turn-display", 213, "display"),
 
     ...pageTitle("display", 300, "3", "屏幕", green),
     text("display", "display-bullets", 303, 86, 225, 500, "• 6.3 英寸 Pro\n• 6.9 英寸 Pro Max\n• LTPO OLED\n• 120Hz ProMotion\n• 灵动岛或更小", { fontSize: 38, lineHeight: 72 }),
+    highlight("display", "display-hi-63", 303.1, "display-bullets", "6.3 英寸 Pro", blueHighlight),
+    highlight("display", "display-hi-69", 303.2, "display-bullets", "6.9 英寸 Pro Max", greenHighlight),
+    highlight("display", "display-hi-120", 303.3, "display-bullets", "120Hz ProMotion", yellowHighlight),
     box("display", "phone-outline", 304, 540, 300, 270, 600, { stroke: ink, strokeWidth: 3, radius: 58, roughness: .85 }),
     box("display", "phone-island", 305, 615, 330, 120, 28, { stroke: ink, fill: ink, strokeWidth: 1, radius: 15, roughness: .4 }),
     stroke("display", "screen-diagonal", 306, "M 585 815 L 760 405 M 760 405 L 748 430 M 760 405 L 735 413 M 585 815 L 596 789 M 585 815 L 608 805", { color: ink, width: 2.4, roughness: .65 }),
     text("display", "screen-69", 307, 570, 490, 150, "6.9”", { fontSize: 50, lineHeight: 60 }),
     text("display", "screen-63", 308, 670, 735, 150, "6.3”", { fontSize: 50, lineHeight: 60 }),
-    text("display", "display-summary", 309, 120, 1035, 660, "一个页面记住两件事：\nPro ≈ 6.3”\nPro Max ≈ 6.9”", { color: green, fontSize: 40, lineHeight: 78, textAlign: "center" }),
     hold("display", "display-hold", 310),
     turn("turn-camera", 311, "camera"),
 
     ...pageTitle("camera", 400, "4", "影像", purple),
     text("camera", "camera-bullets", 403, 86, 220, 730, "• 前摄：24MP（传闻）\n• 主摄：可变光圈（高关注）\n• 夜景 / 人像 / 视频更强\n• 算法虚化 → 光学 + AI", { fontSize: 37, lineHeight: 74 }),
+    highlight("camera", "camera-hi-24mp", 403.1, "camera-bullets", "24MP", purpleHighlight),
+    highlight("camera", "camera-hi-aperture", 403.2, "camera-bullets", "可变光圈", yellowHighlight),
+    highlight("camera", "camera-hi-ai", 403.3, "camera-bullets", "光学 + AI", blueHighlight),
     text("camera", "before-label", 404, 105, 610, 300, "Before（算法虚化）", { fontSize: 31, lineHeight: 40 }),
     box("camera", "before-frame", 405, 90, 680, 310, 330, { stroke: ink, strokeWidth: 2.2, radius: 8, roughness: .8 }),
     stroke("camera", "before-face", 406, "M 185 790 Q 245 735 305 790 Q 315 875 245 920 Q 175 875 185 790 M 205 805 Q 245 770 285 805 M 217 850 L 226 850 M 263 850 L 272 850 M 226 884 Q 245 896 265 884", { color: ink, width: 2.3, roughness: 1 }),
@@ -116,12 +134,13 @@ export const iphone18ProRumorsVideoScene: RecreationScene = {
     box("camera", "after-frame", 410, 520, 680, 310, 330, { stroke: ink, strokeWidth: 2.2, radius: 8, roughness: .8 }),
     stroke("camera", "after-face", 411, "M 615 790 Q 675 735 735 790 Q 745 875 675 920 Q 605 875 615 790 M 635 805 Q 675 770 715 805 M 647 850 L 656 850 M 693 850 L 702 850 M 656 884 Q 675 900 695 884", { color: ink, width: 2.3, roughness: 1 }),
     stroke("camera", "sparkles", 412, "M 560 745 L 570 745 M 565 740 L 565 750 M 770 760 L 788 760 M 779 751 L 779 769 M 755 900 L 770 900 M 763 892 L 763 908", { color: purple, width: 3, roughness: .7 }),
-    text("camera", "camera-bottom", 413, 120, 1090, 660, "重点不是“更会虚化”，\n而是光学能力和 AI 算法一起增强。", { color: purple, fontSize: 36, lineHeight: 66, textAlign: "center" }),
+    text("camera", "camera-bottom", 413, 120, 1090, 660, "光学能力 + AI 算法", { color: purple, fontSize: 42, lineHeight: 58, textAlign: "center" }),
     hold("camera", "camera-hold", 414),
     turn("turn-battery", 415, "battery"),
 
     ...pageTitle("battery", 500, "5", "续航", blue),
     text("battery", "battery-bullets", 503, 86, 220, 720, "• 更大电池（传闻）\n• 续航：预计 +10% ~ +15%\n• 重度使用更稳\n• 轻度使用更久", { fontSize: 39, lineHeight: 78 }),
+    highlight("battery", "battery-hi-range", 503.1, "battery-bullets", "+10% ~ +15%", greenHighlight),
     box("battery", "battery-outline", 504, 95, 640, 360, 185, { stroke: ink, strokeWidth: 3, radius: 18, roughness: .9 }),
     box("battery", "battery-tip", 505, 455, 700, 32, 65, { stroke: ink, strokeWidth: 2.4, radius: 5, roughness: .7 }),
     box("battery", "cell-1", 506, 120, 680, 62, 105, { stroke: green, strokeWidth: 2, fill: "rgba(21,138,78,.28)", radius: 5, roughness: .6 }),
@@ -142,6 +161,7 @@ export const iphone18ProRumorsVideoScene: RecreationScene = {
 
     ...pageTitle("connectivity", 600, "6", "通信", orange),
     text("connectivity", "connectivity-bullets", 603, 86, 230, 700, "• C2 基带（传闻）\n• Wi-Fi 7\n• 延迟更低\n• 连接更稳", { fontSize: 42, lineHeight: 88 }),
+    highlight("connectivity", "connectivity-hi-wifi", 603.1, "connectivity-bullets", "Wi-Fi 7", blueHighlight),
     text("connectivity", "signal-heading", 604, 100, 660, 320, "5G 信号", { fontSize: 38, lineHeight: 48 }),
     box("connectivity", "sig1", 605, 450, 735, 42, 70, { stroke: ink, fill: ink, strokeWidth: 1, radius: 4, roughness: .5 }),
     box("connectivity", "sig2", 606, 515, 685, 42, 120, { stroke: ink, fill: ink, strokeWidth: 1, radius: 4, roughness: .5 }),
@@ -159,7 +179,8 @@ export const iphone18ProRumorsVideoScene: RecreationScene = {
 
     ...pageTitle("appearance", 700, "7", "外观", purple),
     text("appearance", "appearance-bullets", 703, 86, 220, 710, "• 新配色（传闻）\n• 机身更精致\n• 屏占比更高\n• Face ID 组件可能更隐藏", { fontSize: 40, lineHeight: 82 }),
-    text("appearance", "swatch-heading", 704, 100, 590, 700, "传闻配色速记", { color: purple, fontSize: 40, lineHeight: 50, textAlign: "center" }),
+    highlight("appearance", "appearance-hi-faceid", 703.1, "appearance-bullets", "Face ID", purpleHighlight),
+    text("appearance", "swatch-heading", 704, 100, 590, 700, "传闻配色", { color: purple, fontSize: 40, lineHeight: 50, textAlign: "center" }),
     box("appearance", "swatch-black", 705, 105, 725, 180, 180, { stroke: ink, fill: "#444441", strokeWidth: 2, radius: 24, roughness: .8 }),
     text("appearance", "swatch-black-label", 706, 105, 925, 180, "曜石黑", { fontSize: 31, textAlign: "center" }),
     box("appearance", "swatch-white", 707, 360, 725, 180, 180, { stroke: ink, fill: "#f6f2e7", strokeWidth: 2, radius: 24, roughness: .8 }),
