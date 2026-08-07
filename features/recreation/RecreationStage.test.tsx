@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
-import { RecreationStage, timelineElements } from "./RecreationStage";
+import { durationForElement, RecreationStage, timelineElements } from "./RecreationStage";
 import type { RecreationScene } from "./recreation-types";
 
 function makeScene(id: string, titleOrder: number): RecreationScene {
@@ -31,6 +31,22 @@ describe("RecreationStage timeline", () => {
     expect(first[0].id).toBe(second[0].id);
     expect(first[0].order).toBe(2);
     expect(second[0].order).toBe(7);
+  });
+
+  it("schedules view transitions and anchored annotations as ordinary sequential events", () => {
+    const scene: RecreationScene = {
+      ...makeScene("immersive", 1),
+      elements: [
+        { id: "sentence", kind: "text", order: 1, x: 10, y: 10, width: 80, text: "I still went" },
+        { id: "focus", kind: "view", order: 2, mode: "focus", targetIds: ["sentence"], durationMs: 540 },
+        { id: "label", kind: "annotation", order: 3, targetId: "sentence", match: "I", label: "pron." },
+        { id: "restore", kind: "view", order: 4, mode: "restore" },
+      ],
+    };
+    const timeline = timelineElements(scene);
+    expect(timeline.map((element) => element.id)).toEqual(["sentence", "focus", "label", "restore"]);
+    expect(durationForElement(timeline[1])).toBe(540);
+    expect(durationForElement(timeline[2])).toBeGreaterThan(0);
   });
 });
 afterEach(() => {
