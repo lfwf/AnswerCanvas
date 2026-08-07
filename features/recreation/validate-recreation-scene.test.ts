@@ -12,4 +12,10 @@ describe("validateRecreationScene", () => {
     const broken = { ...scene, elements: scene.elements.map((element) => element.kind === "mark" ? { ...element, targetId: "missing" } : element) };
     expect(validateRecreationScene(broken).some((issue) => issue.includes("missing text"))).toBe(true);
   });
+
+  it("reports a mark scheduled before its target text", () => {
+    const scene = withCurrentSceneAnnotations(currentRecreationScene);
+    const broken = { ...scene, elements: scene.elements.map((element) => element.kind === "mark" ? { ...element, order: 0 } : element) };
+    expect(validateRecreationScene(broken).some((issue) => issue.includes("must play after text"))).toBe(true);
+  });
 });
