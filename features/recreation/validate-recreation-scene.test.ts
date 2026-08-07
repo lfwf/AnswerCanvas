@@ -1,12 +1,14 @@
 import { aiCoreConceptsScene } from "./scenes/ai-core-concepts";
+import { immersiveGrammarAnalysisScene } from "./scenes/immersive-grammar-analysis";
 import { skillAgentNotesScene } from "./scenes/skill-agent-notes";
-import type { RecreationMark, RecreationScene } from "./recreation-types";
+import type { RecreationAnnotation, RecreationMark, RecreationScene, RecreationViewEffect } from "./recreation-types";
 import { validateRecreationScene } from "./validate-recreation-scene";
 
 describe("validateRecreationScene", () => {
-  it("accepts both registered recreation scenes", () => {
+  it("accepts registered recreation scenes including immersive analysis", () => {
     expect(validateRecreationScene(skillAgentNotesScene)).toEqual([]);
     expect(validateRecreationScene(aiCoreConceptsScene)).toEqual([]);
+    expect(validateRecreationScene(immersiveGrammarAnalysisScene)).toEqual([]);
   });
 
   it("reports missing semantic mark targets", () => {
@@ -29,5 +31,27 @@ describe("validateRecreationScene", () => {
       }),
     };
     expect(validateRecreationScene(broken).some((issue) => issue.includes("must play after text"))).toBe(true);
+  });
+
+  it("reports missing anchored annotation matches", () => {
+    const first = immersiveGrammarAnalysisScene.elements.find((element): element is RecreationAnnotation => element.kind === "annotation");
+    expect(first).toBeDefined();
+    if (!first) return;
+    const broken: RecreationScene = {
+      ...immersiveGrammarAnalysisScene,
+      elements: immersiveGrammarAnalysisScene.elements.map((element) => element.id === first.id ? { ...first, match: "not in source" } : element),
+    };
+    expect(validateRecreationScene(broken).some((issue) => issue.includes("cannot find match"))).toBe(true);
+  });
+
+  it("reports view effects that reference missing scene elements", () => {
+    const first = immersiveGrammarAnalysisScene.elements.find((element): element is RecreationViewEffect => element.kind === "view" && element.mode === "focus");
+    expect(first).toBeDefined();
+    if (!first) return;
+    const broken: RecreationScene = {
+      ...immersiveGrammarAnalysisScene,
+      elements: immersiveGrammarAnalysisScene.elements.map((element) => element.id === first.id ? { ...first, targetIds: [...(first.targetIds ?? []), "missing-element"] } : element),
+    };
+    expect(validateRecreationScene(broken).some((issue) => issue.includes("missing element"))).toBe(true);
   });
 });

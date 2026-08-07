@@ -37,11 +37,14 @@ function useFontsReady() {
 
 function unitsFor(element: RecreationAnimatedElement) {
   if (element.kind === "text") return drawableGraphemes(element.text).length;
+  if (element.kind === "annotation") return drawableGraphemes(element.label).length;
   if (element.kind === "mark") return Math.max(1, drawableGraphemes(element.match).length);
   return 1;
 }
 
 export function durationForElement(element: RecreationAnimatedElement) {
+  if (element.kind === "view") return element.durationMs ?? 460;
+  if (element.kind === "annotation") return Math.max(260, unitsFor(element) * 52);
   if (element.kind === "text") return Math.max(260, unitsFor(element) * 58);
   if (element.kind === "mark") return Math.max(300, unitsFor(element) * 32);
   if (element.kind === "box") return element.handDrawn === false ? 620 : 1180;

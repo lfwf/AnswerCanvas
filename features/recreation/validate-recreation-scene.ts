@@ -1,4 +1,4 @@
-import { validateMark } from "./recreation-geometry";
+import { findGraphemeRange, validateMark } from "./recreation-geometry";
 import type { RecreationScene, RecreationText } from "./recreation-types";
 import { isAnimatedElement, isStaticElement } from "./recreation-types";
 
@@ -35,16 +35,34 @@ export function validateRecreationScene(scene: RecreationScene): string[] {
       if (element.height !== undefined && requiredHeight > element.height + 1) issues.push(`text ${element.id} height is too small for explicit lines`);
     }
     if (element.kind === "box" && (element.x < 0 || element.y < 0 || element.x + element.width > scene.width + 0.5 || element.y + element.height > scene.height + 0.5)) issues.push(`box ${element.id} is outside scene bounds`);
+    if (element.kind === "view") {
+      if (element.durationMs !== undefined && (!Number.isFinite(element.durationMs) || element.durationMs <= 0)) issues.push(`view ${element.id} has invalid duration`);
+      if (element.dimOpacity !== undefined && (!Number.isFinite(element.dimOpacity) || element.dimOpacity < 0 || element.dimOpacity > 1)) issues.push(`view ${element.id} has invalid dimOpacity`);
+    }
   }
 
   for (const element of scene.elements) {
-    if (element.kind !== "mark") continue;
-    const target = texts.get(element.targetId);
-    if (!target) issues.push(`mark ${element.id} references missing text ${element.targetId}`);
-    else {
-      const issue = validateMark(element, target);
-      if (issue) issues.push(issue);
-      if (isAnimatedElement(element) && isAnimatedElement(target) && element.order <= target.order) issues.push(`mark ${element.id} must play after text ${target.id}`);
+    if (element.kind === "mark") {
+      const target = texts.get(element.targetId);
+      if (!target) issues.push(`mark ${element.id} references missing text ${element.targetId}`);
+      else {
+        const issue = validateMark(element, target);
+        if (issue) issues.push(issue);
+        if (isAnimatedElement(element) && isAnimatedElement(target) && element.order <= target.order) issues.push(`mark ${element.id} must play after text ${target.id}`);
+      }
+      continue;
+    }
+    if (element.kind === "annotation") {
+      const target = texts.get(element.targetId);
+      if (!target) issues.push(`annotation ${element.id} references missing text ${element.targetId}`);
+      else {
+        if (!findGraphemeRange(target.text, element.match, element.occurrence)) issues.push(`annotation ${element.id} cannot find match in text ${target.id}`);
+        if (isAnimatedElement(target) && element.order <= target.order) issues.push(`annotation ${element.id} must play after text ${target.id}`);
+      }
+      continue;
+    }
+    if (element.kind === "view") {
+      for (const targetId of element.targetIds ?? []) if (!ids.has(targetId)) issues.push(`view ${element.id} references missing element ${targetId}`);
     }
   }
   return issues;
