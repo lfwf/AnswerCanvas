@@ -1,10 +1,6 @@
-"use client";
-import { RecreationStage } from "@/features/recreation/RecreationStage";
-import { currentRecreationScene } from "@/features/recreation/current-scene";
-import { withCurrentSceneAnnotations } from "@/features/recreation/current-scene-annotations";
-
-const scene = withCurrentSceneAnnotations(currentRecreationScene);
+import { SceneGallery } from "@/features/recreation/SceneGallery";
+import { listScenes } from "@/features/recreation/scene-registry";
 
 export default function HomePage() {
-  return <RecreationStage scene={scene} />;
+  return <SceneGallery scenes={listScenes()} />;
 }
