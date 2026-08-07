@@ -156,30 +156,70 @@ export function buildHandDrawnStrokePasses(stroke: RecreationStroke): HandDrawnP
   }));
 }
 
-function roundedRectPath(box: RecreationBox, random: () => number, pass: number) {
+function edgeCommands(start: Point, end: Point, random: () => number, roughness: number, bowing: number, pass: number) {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const length = Math.max(1, Math.hypot(dx, dy));
+  const nx = -dy / length;
+  const ny = dx / length;
+  const tx = dx / length;
+  const ty = dy / length;
+  const segmentCount = clamp(Math.round(length / 105), 2, 8);
+  const scale = roughness * clamp(length / 220, 1.15, 2.45) * (pass === 0 ? 1 : 1.28);
+  const commands: string[] = [];
+
+  for (let index = 1; index <= segmentCount; index += 1) {
+    const t0 = (index - 1) / segmentCount;
+    const t1 = index / segmentCount;
+    const tm = (t0 + t1) / 2;
+    const endNoise = index === segmentCount ? 0 : seededRange(random, -scale * .34, scale * .34);
+    const tangentNoise = index === segmentCount ? 0 : seededRange(random, -roughness * .28, roughness * .28);
+    const target = {
+      x: start.x + dx * t1 + nx * endNoise + tx * tangentNoise,
+      y: start.y + dy * t1 + ny * endNoise + ty * tangentNoise,
+    };
+    const bow = seededRange(random, -scale, scale) + seededRange(random, -bowing, bowing) * clamp(length / 180, .8, 2.2);
+    const control = {
+      x: start.x + dx * tm + nx * bow + tx * seededRange(random, -roughness * .22, roughness * .22),
+      y: start.y + dy * tm + ny * bow + ty * seededRange(random, -roughness * .22, roughness * .22),
+    };
+    commands.push(`Q ${point(control.x, control.y)} ${point(target.x, target.y)}`);
+  }
+  return commands.join(" ");
+}
+
+function handDrawnRectPath(box: RecreationBox, random: () => number, pass: number) {
   const roughness = box.roughness ?? 1.05;
   const bowing = box.bowing ?? 0.7;
-  const offset = pass === 0 ? 0 : seededRange(random, -0.55, 0.55);
-  const x = box.x + offset;
-  const y = box.y + seededRange(random, -roughness * 0.16, roughness * 0.16);
-  const width = box.width + seededRange(random, -roughness * 0.22, roughness * 0.22);
-  const height = box.height + seededRange(random, -roughness * 0.22, roughness * 0.22);
-  const radius = clamp(box.radius ?? 0, 0, Math.min(width, height) / 2);
-  const topBow = seededRange(random, -bowing, bowing) * clamp(width / 260, 0.4, 1.7);
-  const rightBow = seededRange(random, -bowing, bowing) * clamp(height / 220, 0.4, 1.5);
-  const bottomBow = seededRange(random, -bowing, bowing) * clamp(width / 260, 0.4, 1.7);
-  const leftBow = seededRange(random, -bowing, bowing) * clamp(height / 220, 0.4, 1.5);
-  const r = radius;
+  const passOffset = pass === 0 ? 0 : seededRange(random, -roughness * .55, roughness * .55);
+  const x = box.x + passOffset + seededRange(random, -roughness * .22, roughness * .22);
+  const y = box.y + seededRange(random, -roughness * .22, roughness * .22);
+  const width = box.width + seededRange(random, -roughness * .75, roughness * .75);
+  const height = box.height + seededRange(random, -roughness * .75, roughness * .75);
+  const authoredRadius = clamp(box.radius ?? 0, 0, Math.min(width, height) / 2);
+  const radius = authoredRadius > 0 ? authoredRadius : clamp(roughness * 2.4, 2.5, 7);
+
+  const topLeft = { x: x + radius, y };
+  const topRight = { x: x + width - radius, y };
+  const rightTop = { x: x + width, y: y + radius };
+  const rightBottom = { x: x + width, y: y + height - radius };
+  const bottomRight = { x: x + width - radius, y: y + height };
+  const bottomLeft = { x: x + radius, y: y + height };
+  const leftBottom = { x, y: y + height - radius };
+  const leftTop = { x, y: y + radius };
+  const cornerNoise = roughness * (pass === 0 ? .45 : .8);
+  const corner = (cx: number, cy: number) => ({ x: cx + seededRange(random, -cornerNoise, cornerNoise), y: cy + seededRange(random, -cornerNoise, cornerNoise) });
+
   return [
-    `M ${point(x + r, y)}`,
-    `C ${point(x + width * 0.33, y + topBow)} ${point(x + width * 0.67, y - topBow * 0.35)} ${point(x + width - r, y)}`,
-    `Q ${point(x + width, y)} ${point(x + width, y + r)}`,
-    `C ${point(x + width + rightBow, y + height * 0.33)} ${point(x + width - rightBow * 0.35, y + height * 0.67)} ${point(x + width, y + height - r)}`,
-    `Q ${point(x + width, y + height)} ${point(x + width - r, y + height)}`,
-    `C ${point(x + width * 0.67, y + height + bottomBow)} ${point(x + width * 0.33, y + height - bottomBow * 0.35)} ${point(x + r, y + height)}`,
-    `Q ${point(x, y + height)} ${point(x, y + height - r)}`,
-    `C ${point(x + leftBow, y + height * 0.67)} ${point(x - leftBow * 0.35, y + height * 0.33)} ${point(x, y + r)}`,
-    `Q ${point(x, y)} ${point(x + r, y)}`,
+    `M ${point(topLeft.x, topLeft.y)}`,
+    edgeCommands(topLeft, topRight, random, roughness, bowing, pass),
+    `Q ${point(corner(x + width, y).x, corner(x + width, y).y)} ${point(rightTop.x, rightTop.y)}`,
+    edgeCommands(rightTop, rightBottom, random, roughness, bowing, pass),
+    `Q ${point(corner(x + width, y + height).x, corner(x + width, y + height).y)} ${point(bottomRight.x, bottomRight.y)}`,
+    edgeCommands(bottomRight, bottomLeft, random, roughness, bowing, pass),
+    `Q ${point(corner(x, y + height).x, corner(x, y + height).y)} ${point(leftBottom.x, leftBottom.y)}`,
+    edgeCommands(leftBottom, leftTop, random, roughness, bowing, pass),
+    `Q ${point(corner(x, y).x, corner(x, y).y)} ${point(topLeft.x, topLeft.y)}`,
   ].join(" ");
 }
 
@@ -193,8 +233,8 @@ export function buildHandDrawnBoxPasses(box: RecreationBox): HandDrawnPass[] {
   const count = box.dash ? 1 : 2;
   return Array.from({ length: count }, (_, index) => ({
     id: `${box.id}:pass-${index}`,
-    path: roundedRectPath(box, random, index),
-    opacity: index === 0 ? 0.9 : 0.22,
+    path: handDrawnRectPath(box, random, index),
+    opacity: index === 0 ? 0.9 : 0.24,
     widthScale: index === 0 ? 1 : 0.8,
   }));
 }

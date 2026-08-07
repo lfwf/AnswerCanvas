@@ -47,9 +47,19 @@ describe("hand drawn paths", () => {
     expect(passes[0].path).toContain(" Q ");
   });
 
-  it("uses one pass for dashed boxes so dashes stay legible", () => {
-    const passes = buildHandDrawnBoxPasses({ id: "box", kind: "box", order: 1, x: 10, y: 20, width: 80, height: 40, dash: "7 5" });
+  it("draws large rectangles as several uneven hand-drawn edge segments instead of four perfect sides", () => {
+    const box = { id: "large-card", kind: "box" as const, order: 1, x: 40, y: 80, width: 720, height: 330, radius: 24, roughness: 1.8, bowing: 1.1 };
+    const first = buildHandDrawnBoxPasses(box);
+    const second = buildHandDrawnBoxPasses(box);
+    expect(first).toEqual(second);
+    expect(first).toHaveLength(2);
+    expect((first[0].path.match(/\bQ\b/g) ?? []).length).toBeGreaterThan(14);
+    expect(first[0].path).not.toBe(first[1].path);
+  });
+
+  it("uses one visibly wobbly pass for dashed boxes so dashes stay legible", () => {
+    const passes = buildHandDrawnBoxPasses({ id: "box", kind: "box", order: 1, x: 10, y: 20, width: 620, height: 240, dash: "7 5", roughness: 1.8, bowing: 1.1 });
     expect(passes).toHaveLength(1);
-    expect(passes[0].path).toContain("Q");
+    expect((passes[0].path.match(/\bQ\b/g) ?? []).length).toBeGreaterThan(10);
   });
 });

@@ -25,7 +25,8 @@ const scene: RecreationScene = {
 };
 
 beforeEach(() => {
-  toPng.mockClear();
+  toPng.mockReset();
+  toPng.mockResolvedValue("data:image/png;base64,c25hcHNob3Q=");
   vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => window.setTimeout(() => callback(performance.now()), 0));
   vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ ok: true, directory: "artifacts/recreation/paged-test/final-pages", files: ["01-one.png", "02-two.png"] }), { status: 200, headers: { "content-type": "application/json" } })));
 });
@@ -51,5 +52,16 @@ describe("PageSnapshotPanel", () => {
     expect(screen.getByText("artifacts/recreation/paged-test/final-pages")).toBeInTheDocument();
     expect(screen.getAllByRole("img")).toHaveLength(2);
     expect(screen.getAllByRole("link", { name: "下载 PNG" })).toHaveLength(2);
+  });
+
+  it("exits a failed generation state and lets the user retry", async () => {
+    toPng.mockRejectedValueOnce(new Error("capture failed"));
+    render(<PageSnapshotPanel scene={scene} ready />);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "截图失败，重试" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "截图失败，重试" }));
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "已保存 2 张" })).toBeEnabled());
+    expect(toPng).toHaveBeenCalledTimes(3);
   });
 });
