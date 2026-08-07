@@ -45,7 +45,7 @@ for (const [alias, canonicalId] of Object.entries(aliases)) {
   if (!ids.has(canonicalId)) throw new Error(`Scene alias ${alias} points to missing scene: ${canonicalId}`);
 }
 
-const sceneMap = new Map<string, RecreationScene>(recreationScenes.map((scene) => [scene.id, scene]));
+const sceneMap = new Map<string, RecreationScene>(recreationScenes.map((scene): [string, RecreationScene] => [scene.id, scene]));
 
 export function isValidSceneSlug(value: string): boolean {
   return SCENE_ID_PATTERN.test(value);
