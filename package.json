@@ -17,6 +17,7 @@
     "security:scan": "node scripts/assert-no-secret.mjs sk-sentinel-do-not-ship .next/static"
   },
   "dependencies": {
+    "html-to-image": "1.11.13",
     "next": "16.3.0",
     "openai": "7.4.0",
     "react": "19.2.8",
