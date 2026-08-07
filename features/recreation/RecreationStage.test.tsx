@@ -48,6 +48,21 @@ describe("RecreationStage timeline", () => {
     expect(durationForElement(timeline[1])).toBe(540);
     expect(durationForElement(timeline[2])).toBeGreaterThan(0);
   });
+
+  it("schedules a page turn between the outgoing page and the next page writing", () => {
+    const scene: RecreationScene = {
+      ...makeScene("paged", 1),
+      pages: [{ id: "one", title: "One" }, { id: "two", title: "Two" }],
+      elements: [
+        { id: "one-text", kind: "text", pageId: "one", order: 1, x: 10, y: 10, width: 80, text: "One" },
+        { id: "turn", kind: "page", pageId: "two", order: 2, durationMs: 880, transition: "slide" },
+        { id: "two-text", kind: "text", pageId: "two", order: 3, x: 10, y: 10, width: 80, text: "Two" },
+      ],
+    };
+    const timeline = timelineElements(scene);
+    expect(timeline.map((element) => element.id)).toEqual(["one-text", "turn", "two-text"]);
+    expect(durationForElement(timeline[1])).toBe(880);
+  });
 });
 afterEach(() => {
   vi.useRealTimers();
