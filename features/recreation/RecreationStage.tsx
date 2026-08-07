@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { drawableGraphemes } from "./recreation-geometry";
 import { RecreationCanvas } from "./RecreationCanvas";
+import { pagePresentationFor } from "./recreation-pages";
 import { RecreationPlayer, type RecreationEvent } from "./recreation-player";
 import type { RecreationAnimatedElement, RecreationScene } from "./recreation-types";
 import { isAnimatedElement } from "./recreation-types";
@@ -43,6 +44,7 @@ function unitsFor(element: RecreationAnimatedElement) {
 }
 
 export function durationForElement(element: RecreationAnimatedElement) {
+  if (element.kind === "page") return element.durationMs ?? 720;
   if (element.kind === "view") return element.durationMs ?? 460;
   if (element.kind === "annotation") return Math.max(260, unitsFor(element) * 52);
   if (element.kind === "text") return Math.max(260, unitsFor(element) * 58);
@@ -57,6 +59,12 @@ export function timelineElements(scene: RecreationScene): RecreationAnimatedElem
 
 function scenePrompt(scene: RecreationScene) {
   return scene.prompt?.trim() || `请把「${scene.title}」整理成一份清晰的手写笔记。`;
+}
+
+function pageLayerStyle(role: "outgoing" | "incoming", progress: number, transition: "slide" | "fade"): React.CSSProperties {
+  if (transition === "fade") return { opacity: role === "outgoing" ? 1 - progress : progress };
+  const x = role === "outgoing" ? -progress * 106 : (1 - progress) * 106;
+  return { transform: `translateX(${x}%)`, opacity: role === "outgoing" ? 1 - progress * 0.18 : 0.82 + progress * 0.18 };
 }
 
 export function RecreationStage({ scene, history = [] }: { scene: RecreationScene; history?: RecreationScene[] }) {
@@ -74,6 +82,9 @@ export function RecreationStage({ scene, history = [] }: { scene: RecreationScen
   const events = useMemo<RecreationEvent[]>(() => elements.map((element) => ({ id: element.id, durationMs: durationForElement(element) })), [elements]);
   const historyScenes = history.length ? history : [scene];
   const prompt = scenePrompt(scene);
+  const pagePresentation = useMemo(() => pagePresentationFor(scene, progress), [progress, scene]);
+  const pageForIndicator = pagePresentation.incomingPageId && pagePresentation.transitionProgress >= 0.5 ? pagePresentation.incomingPageId : pagePresentation.currentPageId;
+  const pageIndex = scene.pages?.findIndex((page) => page.id === pageForIndicator) ?? -1;
 
   useEffect(() => {
     const viewport = canvasViewportRef.current;
@@ -171,6 +182,7 @@ export function RecreationStage({ scene, history = [] }: { scene: RecreationScen
           <header className="assistant-message-header">
             <div className="assistant-identity"><span className="assistant-avatar">AC</span><div><strong>AnswerCanvas</strong><span>{statusLabel}</span></div></div>
             <nav className="answer-controls" aria-label="播放控制">
+              {scene.pages?.length ? <span className="page-indicator">{Math.max(1, pageIndex + 1)}/{scene.pages.length}</span> : null}
               <button type="button" onClick={togglePlay} disabled={status === "complete" || !fontsReady}>{status === "playing" ? "暂停" : status === "complete" ? "完成" : "继续"}</button>
               <button type="button" onClick={replay} disabled={!fontsReady || reducedMotion}>重播</button>
               <select aria-label="播放速度" value={speed} onChange={(event) => changeSpeed(Number(event.target.value))}><option value="0.5">0.5x</option><option value="1">1x</option><option value="1.5">1.5x</option><option value="2">2x</option></select>
@@ -179,8 +191,11 @@ export function RecreationStage({ scene, history = [] }: { scene: RecreationScen
 
           <div className="answer-canvas-viewport" ref={canvasViewportRef}>
             <div className="recreation-paper-shell" style={{ width: scene.width * scale, height: scene.height * scale }}>
-              <div className="recreation-canvas-transform" style={{ width: scene.width, height: scene.height, transform: `scale(${scale})` }}>
-                <RecreationCanvas scene={scene} progress={progress} />
+              <div className="recreation-canvas-transform recreation-page-stage" style={{ width: scene.width, height: scene.height, transform: `scale(${scale})` }}>
+                {pagePresentation.incomingPageId && pagePresentation.outgoingPageId ? <>
+                  <div className="recreation-page-layer" style={pageLayerStyle("outgoing", pagePresentation.transitionProgress, pagePresentation.transition)}><RecreationCanvas scene={scene} progress={progress} pageId={pagePresentation.outgoingPageId} /></div>
+                  <div className="recreation-page-layer" style={pageLayerStyle("incoming", pagePresentation.transitionProgress, pagePresentation.transition)}><RecreationCanvas scene={scene} progress={progress} pageId={pagePresentation.incomingPageId} /></div>
+                </> : <div className="recreation-page-layer"><RecreationCanvas scene={scene} progress={progress} pageId={pagePresentation.currentPageId} /></div>}
               </div>
             </div>
           </div>
