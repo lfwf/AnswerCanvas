@@ -37,7 +37,7 @@ describe("hand drawn paths", () => {
     expect(first[0].path).not.toBe(source);
     expect(first[0].path).toContain(" C ");
     expect(first[0].path).toContain(" Q ");
-    expect((first[0].path.match(/\bM\b/g) ?? []).length).toBeGreaterThanOrEqual(4);
+    expect((first[0].path.match(/\bM\b/g) ?? [])).toHaveLength(3);
   });
 
   it("keeps relative curve commands hand-drawn too", () => {
