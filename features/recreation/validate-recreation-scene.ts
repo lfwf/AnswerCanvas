@@ -30,6 +30,7 @@ export function validateRecreationScene(scene: RecreationScene): string[] {
     else {
       const issue = validateMark(element, target);
       if (issue) issues.push(issue);
+      if (element.order <= target.order) issues.push(`mark ${element.id} must play after text ${target.id}`);
     }
   }
   return issues;
