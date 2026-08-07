@@ -9,20 +9,43 @@ export interface HandDrawnPass {
 }
 
 interface Point { x: number; y: number; }
+interface LineSegment { start: Point; end: Point; }
 
 const NUMBER = "[-+]?(?:\\d*\\.)?\\d+(?:[eE][-+]?\\d+)?";
-const SIMPLE_LINE = new RegExp(`^\\s*M\\s*(${NUMBER})[ ,]+(${NUMBER})\\s*L\\s*(${NUMBER})[ ,]+(${NUMBER})\\s*$`, "i");
+const PATH_TOKEN = new RegExp(`[MLml]|${NUMBER}`, "g");
 
 function round(value: number) { return Math.round(value * 100) / 100; }
 function point(x: number, y: number) { return `${round(x)} ${round(y)}`; }
 function clamp(value: number, min: number, max: number) { return Math.min(max, Math.max(min, value)); }
 
+export function parseLineSegments(path: string): LineSegment[] | null {
+  const tokens = path.match(PATH_TOKEN);
+  if (!tokens?.length) return null;
+  const remainder = path.replace(PATH_TOKEN, "").replace(/[\s,]+/g, "");
+  if (remainder) return null;
+  const segments: LineSegment[] = [];
+  let index = 0;
+  let current: Point | null = null;
+  while (index < tokens.length) {
+    const command = tokens[index++];
+    if (!/^[ML]$/i.test(command)) return null;
+    const x = Number(tokens[index++]);
+    const y = Number(tokens[index++]);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    const relative = command === command.toLowerCase();
+    const next: Point = { x: relative && current ? current.x + x : x, y: relative && current ? current.y + y : y };
+    if (/^L$/i.test(command)) {
+      if (!current) return null;
+      segments.push({ start: current, end: next });
+    }
+    current = next;
+  }
+  return segments.length ? segments : null;
+}
+
 export function parseSimpleLinePath(path: string): { start: Point; end: Point } | null {
-  const match = path.match(SIMPLE_LINE);
-  if (!match) return null;
-  const values = match.slice(1).map(Number);
-  if (values.some((value) => !Number.isFinite(value))) return null;
-  return { start: { x: values[0], y: values[1] }, end: { x: values[2], y: values[3] } };
+  const segments = parseLineSegments(path);
+  return segments?.length === 1 ? segments[0] : null;
 }
 
 function roughLinePath(start: Point, end: Point, random: () => number, roughness: number, bowing: number, pass: number) {
@@ -45,17 +68,17 @@ function roughLinePath(start: Point, end: Point, random: () => number, roughness
 
 export function buildHandDrawnStrokePasses(stroke: RecreationStroke): HandDrawnPass[] {
   if (stroke.handDrawn === false) return [{ id: `${stroke.id}:clean`, path: stroke.path, opacity: 1, widthScale: 1 }];
-  const line = parseSimpleLinePath(stroke.path);
-  if (!line) return [{ id: `${stroke.id}:source`, path: stroke.path, opacity: 1, widthScale: 1 }];
+  const segments = parseLineSegments(stroke.path);
+  if (!segments) return [{ id: `${stroke.id}:source`, path: stroke.path, opacity: 1, widthScale: 1 }];
   const roughness = stroke.roughness ?? 1.05;
   const bowing = stroke.bowing ?? 0.85;
   const random = createSeededRandom(seedFromString(stroke.id));
   const count = stroke.dash ? 1 : 2;
-  return Array.from({ length: count }, (_, index) => ({
-    id: `${stroke.id}:pass-${index}`,
-    path: roughLinePath(line.start, line.end, random, roughness, bowing, index),
-    opacity: index === 0 ? 0.88 : 0.24,
-    widthScale: index === 0 ? 1 : 0.82,
+  return Array.from({ length: count }, (_, passIndex) => ({
+    id: `${stroke.id}:pass-${passIndex}`,
+    path: segments.map((segment) => roughLinePath(segment.start, segment.end, random, roughness, bowing, passIndex)).join(" "),
+    opacity: passIndex === 0 ? 0.88 : 0.24,
+    widthScale: passIndex === 0 ? 1 : 0.82,
   }));
 }
 
