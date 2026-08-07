@@ -1,17 +1,29 @@
 import { validateMark } from "./recreation-geometry";
 import type { RecreationScene, RecreationText } from "./recreation-types";
+import { isAnimatedElement, isStaticElement } from "./recreation-types";
 
 export function validateRecreationScene(scene: RecreationScene): string[] {
   const issues: string[] = [];
+  if (!scene.id) issues.push("scene id must be non-empty");
+  if (!scene.title) issues.push("scene title must be non-empty");
   if (!Number.isFinite(scene.width) || scene.width <= 0) issues.push("scene width must be positive");
   if (!Number.isFinite(scene.height) || scene.height <= 0) issues.push("scene height must be positive");
+  if (!Number.isFinite(scene.paper.spacing) || scene.paper.spacing <= 0) issues.push("paper spacing must be positive");
 
   const ids = new Set<string>();
+  const orders = new Set<number>();
   const texts = new Map<string, RecreationText>();
   for (const element of scene.elements) {
     if (ids.has(element.id)) issues.push(`duplicate element id: ${element.id}`);
     ids.add(element.id);
-    if (!Number.isFinite(element.order)) issues.push(`element ${element.id} has invalid order`);
+    if (isStaticElement(element)) {
+      if ("order" in element && element.order !== undefined) issues.push(`static element ${element.id} must not define order`);
+    } else if (isAnimatedElement(element)) {
+      if (!Number.isFinite(element.order) || element.order < 0) issues.push(`element ${element.id} has invalid order`);
+      else if (orders.has(element.order)) issues.push(`duplicate dynamic order: ${element.order}`);
+      else orders.add(element.order);
+    }
+
     if (element.kind === "text") {
       texts.set(element.id, element);
       if (element.x < 0 || element.y < 0 || element.x + element.width > scene.width + 0.5) issues.push(`text ${element.id} is outside scene bounds`);
@@ -30,7 +42,7 @@ export function validateRecreationScene(scene: RecreationScene): string[] {
     else {
       const issue = validateMark(element, target);
       if (issue) issues.push(issue);
-      if (element.order <= target.order) issues.push(`mark ${element.id} must play after text ${target.id}`);
+      if (isAnimatedElement(element) && isAnimatedElement(target) && element.order <= target.order) issues.push(`mark ${element.id} must play after text ${target.id}`);
     }
   }
   return issues;
