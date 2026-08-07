@@ -28,6 +28,25 @@ describe("hand drawn paths", () => {
     expect((passes[0].path.match(/\bC\b/g) ?? [])).toHaveLength(2);
   });
 
+  it("roughens cubic, quadratic and closed source paths instead of returning print-perfect geometry", () => {
+    const source = "M 20 40 C 30 10 70 10 80 40 Q 70 70 50 65 L 20 40 Z";
+    const first = buildHandDrawnStrokePasses({ id: "curved-icon", kind: "stroke", order: 1, path: source });
+    const second = buildHandDrawnStrokePasses({ id: "curved-icon", kind: "stroke", order: 1, path: source });
+    expect(first).toEqual(second);
+    expect(first).toHaveLength(2);
+    expect(first[0].path).not.toBe(source);
+    expect(first[0].path).toContain(" C ");
+    expect(first[0].path).toContain(" Q ");
+    expect((first[0].path.match(/\bM\b/g) ?? []).length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("keeps relative curve commands hand-drawn too", () => {
+    const passes = buildHandDrawnStrokePasses({ id: "relative-curve", kind: "stroke", order: 1, path: "M 10 10 c 10 0 20 10 30 10 q 10 10 20 0" });
+    expect(passes).toHaveLength(2);
+    expect(passes[0].path).toContain(" C ");
+    expect(passes[0].path).toContain(" Q ");
+  });
+
   it("uses one pass for dashed boxes so dashes stay legible", () => {
     const passes = buildHandDrawnBoxPasses({ id: "box", kind: "box", order: 1, x: 10, y: 20, width: 80, height: 40, dash: "7 5" });
     expect(passes).toHaveLength(1);
