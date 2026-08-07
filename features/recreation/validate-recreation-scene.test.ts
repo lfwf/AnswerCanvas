@@ -23,7 +23,10 @@ describe("validateRecreationScene", () => {
     if (!firstMark || firstMark.animated === false) return;
     const broken: RecreationScene = {
       ...aiCoreConceptsScene,
-      elements: aiCoreConceptsScene.elements.map((element) => element.id === firstMark.id ? { ...element, order: 0 } : element),
+      elements: aiCoreConceptsScene.elements.map((element) => {
+        if (element.kind !== "mark" || element.id !== firstMark.id || element.animated === false) return element;
+        return { ...element, order: 0 };
+      }),
     };
     expect(validateRecreationScene(broken).some((issue) => issue.includes("must play after text"))).toBe(true);
   });
