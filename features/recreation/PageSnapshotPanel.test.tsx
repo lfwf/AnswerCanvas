@@ -16,6 +16,7 @@ const scene: RecreationScene = {
   description: "test",
   sourceName: "test.png",
   createdAt: "2026-08-07",
+  snapshotRevision: "2",
   width: 900,
   height: 1600,
   paper: { background: "#fbfaf6", pattern: "plain", patternColor: "transparent", spacing: 40 },
@@ -26,6 +27,7 @@ const scene: RecreationScene = {
 beforeEach(() => {
   toPng.mockClear();
   vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => window.setTimeout(() => callback(performance.now()), 0));
+  vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ ok: true, directory: "artifacts/recreation/paged-test/final-pages", files: ["01-one.png", "02-two.png"] }), { status: 200, headers: { "content-type": "application/json" } })));
 });
 
 afterEach(() => {
@@ -33,17 +35,20 @@ afterEach(() => {
 });
 
 describe("PageSnapshotPanel", () => {
-  it("waits for playback completion, then generates one final PNG per page", async () => {
+  it("waits for playback completion, then generates and persists one final PNG per page", async () => {
     const { rerender } = render(<PageSnapshotPanel scene={scene} ready={false} />);
     expect(screen.getByRole("button", { name: "首轮结束后截图" })).toBeDisabled();
     expect(toPng).not.toHaveBeenCalled();
 
     rerender(<PageSnapshotPanel scene={scene} ready />);
-    await waitFor(() => expect(screen.getByRole("button", { name: "最终截图 2" })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole("button", { name: "已保存 2 张" })).toBeEnabled());
     expect(toPng).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith("/api/recreation/snapshots", expect.objectContaining({ method: "POST" }));
 
-    fireEvent.click(screen.getByRole("button", { name: "最终截图 2" }));
+    fireEvent.click(screen.getByRole("button", { name: "已保存 2 张" }));
     expect(screen.getByRole("dialog", { name: "每页最终截图" })).toBeInTheDocument();
+    expect(screen.getByText("artifacts/recreation/paged-test/final-pages")).toBeInTheDocument();
     expect(screen.getAllByRole("img")).toHaveLength(2);
     expect(screen.getAllByRole("link", { name: "下载 PNG" })).toHaveLength(2);
   });
