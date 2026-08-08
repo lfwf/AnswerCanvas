@@ -6,6 +6,8 @@ import { toPng } from "html-to-image";
 import { RecreationCanvas } from "./RecreationCanvas";
 import type { RecreationScene } from "./recreation-types";
 
+const SNAPSHOT_RENDER_REVISION = "paper-text-v2";
+
 interface PageSnapshot {
   pageId: string;
   title: string;
@@ -60,7 +62,8 @@ export function PageSnapshotPanel({ scene, ready }: { scene: RecreationScene; re
   const [retryToken, setRetryToken] = useState(0);
   const [open, setOpen] = useState(false);
   const pages = scene.pages ?? [];
-  const revisionKey = `${scene.id}:${scene.snapshotRevision ?? "1"}`;
+  const persistedRevision = `${scene.snapshotRevision ?? "1"}+${SNAPSHOT_RENDER_REVISION}`;
+  const revisionKey = `${scene.id}:${persistedRevision}`;
   const capturePage = pages.find((page) => page.id === capturePageId) ?? null;
   const shouldRenderSource = ready && state === "generating" && Boolean(capturePage);
 
@@ -111,7 +114,7 @@ export function PageSnapshotPanel({ scene, ready }: { scene: RecreationScene; re
               signal: controller.signal,
               body: JSON.stringify({
                 sceneId: scene.id,
-                revision: scene.snapshotRevision ?? "1",
+                revision: persistedRevision,
                 pages: result,
               }),
             });
@@ -141,7 +144,7 @@ export function PageSnapshotPanel({ scene, ready }: { scene: RecreationScene; re
 
     void generate();
     return () => { cancelled = true; };
-  }, [pages, ready, retryToken, revisionKey, scene.id, scene.paper.background, scene.snapshotRevision]);
+  }, [pages, persistedRevision, ready, retryToken, revisionKey, scene.id, scene.paper.background]);
 
   if (!pages.length) return null;
 
@@ -178,7 +181,7 @@ export function PageSnapshotPanel({ scene, ready }: { scene: RecreationScene; re
         <header>
           <div>
             <strong>每页最终截图</strong>
-            <span>{snapshots.length} 页 · 场景加载后直接生成，版本变化时覆盖旧截图</span>
+            <span>{snapshots.length} 页 · 场景加载后直接生成，内容或渲染器变化时覆盖旧截图</span>
             {savedDirectory ? <code>{savedDirectory}</code> : null}
             {saveWarning ? <em>已生成图片，但自动保存失败：{saveWarning}</em> : null}
           </div>
