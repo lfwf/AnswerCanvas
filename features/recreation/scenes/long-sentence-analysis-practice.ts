@@ -163,7 +163,7 @@ export const longSentenceAnalysisPracticeScene: RecreationScene = {
     text("memory-clock-label", 248, 1046, 1090, 88, "更多时间", { fontSize: 16, textAlign: "center" }),
     stroke("memory-arrow-4", 249, "M 1127 1051 L 1147 1051 M 1147 1051 L 1139 1044 M 1147 1051 L 1139 1058", { color: ink, width: 1.4 }),
     stroke("memory-family", 250, "M 1165 1027 Q 1174 1017 1183 1027 Q 1187 1039 1178 1045 Q 1168 1045 1165 1034 Z M 1176 1046 L 1176 1071 M 1176 1054 L 1162 1062 M 1176 1054 L 1189 1062 M 1164 1072 Q 1173 1063 1182 1072 Q 1185 1082 1177 1088 Q 1168 1088 1164 1079 M 1190 1030 Q 1199 1020 1207 1030", { color: ink, width: 1.4 }),
-    text("memory-family-label", 1136, 1090, 78, "和家人在\n一起", { fontSize: 16, lineHeight: 26, textAlign: "center" }),
+    text("memory-family-label", 251, 1142, 1090, 70, "和家人在\n一起", { fontSize: 16, lineHeight: 26, textAlign: "center" }),
 
     text("final-heart", 290, 66, 1224, 36, "♡", { color: pink, fontSize: 31, textAlign: "center" }),
     text("final-order", 291, 101, 1228, 1030, "理解顺序：让步背景 → 公司情况 → 主句行为 → 原因 → 目的 → 结果", { color: purple, fontSize: 20, lineHeight: 30 }),

@@ -5,7 +5,7 @@ export interface RecreationPagePresentation {
   outgoingPageId?: string;
   incomingPageId?: string;
   transitionProgress: number;
-  transition: "slide" | "fade";
+  transition: "slide" | "fade" | "flip";
 }
 
 function pageTurns(scene: RecreationScene): RecreationPageTurn[] {
@@ -14,19 +14,21 @@ function pageTurns(scene: RecreationScene): RecreationPageTurn[] {
 
 export function pagePresentationFor(scene: RecreationScene, progress: Record<string, number> | undefined, completed = false): RecreationPagePresentation {
   const firstPageId = scene.pages?.[0]?.id;
-  if (!firstPageId) return { currentPageId: undefined, transitionProgress: 1, transition: "slide" };
+  if (!firstPageId) return { currentPageId: undefined, transitionProgress: 1, transition: "flip" };
   let currentPageId = firstPageId;
   for (const turn of pageTurns(scene)) {
     const value = completed ? 1 : Math.max(0, Math.min(1, progress?.[turn.id] ?? 0));
     if (value <= 0) break;
-    if (value < 1) return {
-      currentPageId,
-      outgoingPageId: currentPageId,
-      incomingPageId: turn.pageId,
-      transitionProgress: value,
-      transition: turn.transition ?? "slide",
-    };
+    if (value < 1) {
+      return {
+        currentPageId,
+        outgoingPageId: currentPageId,
+        incomingPageId: turn.pageId,
+        transitionProgress: value,
+        transition: turn.transition ?? "flip",
+      };
+    }
     currentPageId = turn.pageId;
   }
-  return { currentPageId, transitionProgress: 1, transition: "slide" };
+  return { currentPageId, transitionProgress: 1, transition: "flip" };
 }

@@ -61,11 +61,24 @@ export function PageSnapshotPanel({ scene, ready }: { scene: RecreationScene; re
   const [generationProgress, setGenerationProgress] = useState({ completed: 0, total: 0 });
   const [retryToken, setRetryToken] = useState(0);
   const [open, setOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const lightboxCount = snapshots.length;
   const pages = scene.pages ?? [];
   const persistedRevision = `${scene.snapshotRevision ?? "1"}+${SNAPSHOT_RENDER_REVISION}`;
   const revisionKey = `${scene.id}:${persistedRevision}`;
   const capturePage = pages.find((page) => page.id === capturePageId) ?? null;
   const shouldRenderSource = ready && state === "generating" && Boolean(capturePage);
+
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setLightboxIndex(null);
+      else if (event.key === "ArrowLeft" && lightboxCount) setLightboxIndex((lightboxIndex - 1 + lightboxCount) % lightboxCount);
+      else if (event.key === "ArrowRight" && lightboxCount) setLightboxIndex((lightboxIndex + 1) % lightboxCount);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [lightboxIndex, lightboxCount]);
 
   useEffect(() => {
     if (!ready || !pages.length || generatedRevisionRef.current === revisionKey) return;
@@ -188,11 +201,22 @@ export function PageSnapshotPanel({ scene, ready }: { scene: RecreationScene; re
           <button type="button" onClick={() => setOpen(false)} aria-label="关闭截图面板">×</button>
         </header>
         <div className="snapshot-grid">
-          {snapshots.map((snapshot, index) => <figure key={snapshot.pageId}>
+          {snapshots.map((snapshot, index) => <figure key={snapshot.pageId} onClick={() => setLightboxIndex(index)}>
             <img src={snapshot.dataUrl} alt={`${index + 1}. ${snapshot.title}`} />
-            <figcaption><span>{index + 1}. {snapshot.title}</span><a href={snapshot.dataUrl} download={`${scene.id}-${String(index + 1).padStart(2, "0")}-${snapshot.pageId}.png`}>下载 PNG</a></figcaption>
+            <figcaption onClick={(event) => event.stopPropagation()}><span>{index + 1}. {snapshot.title}</span><a href={snapshot.dataUrl} download={`${scene.id}-${String(index + 1).padStart(2, "0")}-${snapshot.pageId}.png`}>下载 PNG</a></figcaption>
           </figure>)}
         </div>
+      </div>
+    </div> : null}
+
+    {lightboxIndex !== null && snapshots[lightboxIndex] ? <div className="snapshot-lightbox" role="dialog" aria-modal="true" aria-label={`${lightboxIndex + 1}. ${snapshots[lightboxIndex].title} 大图查看`} onClick={() => setLightboxIndex(null)}>
+      <div className="snapshot-lightbox-img" onClick={(event) => event.stopPropagation()}>
+        <img src={snapshots[lightboxIndex].dataUrl} alt={`${lightboxIndex + 1}. ${snapshots[lightboxIndex].title}`} />
+        <button type="button" className="snapshot-lightbox-nav prev" aria-label="上一张" onClick={(event) => { event.stopPropagation(); setLightboxIndex((lightboxIndex - 1 + snapshots.length) % snapshots.length); }}>‹</button>
+        <button type="button" className="snapshot-lightbox-nav next" aria-label="下一张" onClick={(event) => { event.stopPropagation(); setLightboxIndex((lightboxIndex + 1) % snapshots.length); }}>›</button>
+        <button type="button" className="snapshot-lightbox-close" aria-label="关闭大图" onClick={(event) => { event.stopPropagation(); setLightboxIndex(null); }}>×</button>
+        <span className="snapshot-lightbox-counter">{lightboxIndex + 1} / {snapshots.length}</span>
+        <div className="snapshot-lightbox-caption">{snapshots[lightboxIndex].title} · 点击空白处或按 ESC 关闭</div>
       </div>
     </div> : null}
   </>;

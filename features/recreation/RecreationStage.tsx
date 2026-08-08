@@ -62,8 +62,17 @@ function scenePrompt(scene: RecreationScene) {
   return scene.prompt?.trim() || `请把「${scene.title}」整理成一份清晰的手写笔记。`;
 }
 
-function pageLayerStyle(role: "outgoing" | "incoming", progress: number, transition: "slide" | "fade"): React.CSSProperties {
+function pageLayerStyle(role: "outgoing" | "incoming", progress: number, transition: "slide" | "fade" | "flip"): React.CSSProperties {
   if (transition === "fade") return { opacity: role === "outgoing" ? 1 - progress : progress };
+  if (transition === "flip") {
+    const angle = role === "outgoing" ? -108 * progress : 108 * (1 - progress);
+    const shadow = role === "outgoing" ? progress : 1 - progress;
+    return {
+      transform: `perspective(2400px) rotateY(${angle}deg)`,
+      transformOrigin: role === "outgoing" ? "100% 50%" : "0% 50%",
+      boxShadow: `${role === "outgoing" ? "" : "-"}28px 0 36px rgba(0,0,0,${0.22 * shadow}) inset`,
+    };
+  }
   const x = role === "outgoing" ? -progress * 106 : (1 - progress) * 106;
   return { transform: `translateX(${x}%)`, opacity: role === "outgoing" ? 1 - progress * 0.18 : 0.82 + progress * 0.18 };
 }

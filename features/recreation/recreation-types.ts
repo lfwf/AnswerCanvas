@@ -126,7 +126,7 @@ export type RecreationPageTurn = RecreationDynamicMeta & {
   kind: "page";
   pageId: string;
   durationMs?: number;
-  transition?: "slide" | "fade";
+  transition?: "slide" | "fade" | "flip";
 };
 
 export interface RecreationScene {

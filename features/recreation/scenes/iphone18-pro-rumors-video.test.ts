@@ -23,7 +23,7 @@ describe("iPhone 18 Pro paged rumor video scene", () => {
   it("uses a vertical recording canvas, explicit snapshot revision and nine readable pages", () => {
     expect(iphone18ProRumorsVideoScene.width).toBe(900);
     expect(iphone18ProRumorsVideoScene.height).toBe(1600);
-    expect(iphone18ProRumorsVideoScene.snapshotRevision).toBe("2026-08-08.5");
+    expect(iphone18ProRumorsVideoScene.snapshotRevision).toBe("2026-08-08.7");
     expect(iphone18ProRumorsVideoScene.pages?.map((page) => page.id)).toEqual(["cover", "chip-ai", "memory", "display", "camera", "battery", "connectivity", "appearance", "summary"]);
   });
 
@@ -142,12 +142,16 @@ describe("iPhone 18 Pro paged rumor video scene", () => {
     expect(order("camera-arrow")).toBeLessThan(order("after-frame"));
     expect(order("battery-chart-axes")).toBeLessThan(order("battery-trend"));
     expect(order("battery-trend")).toBeLessThan(order("battery-value"));
-    expect(order("sig1")).toBeLessThan(order("sig2"));
-    expect(order("sig2")).toBeLessThan(order("sig3"));
-    expect(order("sig3")).toBeLessThan(order("sig4"));
-    expect(order("wifi-dot")).toBeLessThan(order("wifi-arc-1"));
-    expect(order("wifi-arc-1")).toBeLessThan(order("wifi-arc-2"));
-    expect(order("wifi-arc-2")).toBeLessThan(order("wifi-arc-3"));
+    expect(order("before-frame-conn")).toBeLessThan(order("before-sig-1"));
+    expect(order("before-sig-1")).toBeLessThan(order("before-sig-2"));
+    expect(order("before-sig-2")).toBeLessThan(order("before-sig-3"));
+    expect(order("before-sig-3")).toBeLessThan(order("before-delay-bar"));
+    expect(order("before-delay-bar")).toBeLessThan(order("compare-arrow"));
+    expect(order("compare-arrow")).toBeLessThan(order("after-frame-conn"));
+    expect(order("after-sig-1")).toBeLessThan(order("after-sig-2"));
+    expect(order("after-sig-2")).toBeLessThan(order("after-sig-3"));
+    expect(order("after-sig-3")).toBeLessThan(order("after-sig-4"));
+    expect(order("after-sig-4")).toBeLessThan(order("after-delay-bar"));
   });
 
   it("draws every appearance swatch before writing its color name", () => {
