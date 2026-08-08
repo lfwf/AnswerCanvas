@@ -1,7 +1,12 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
-import { durationForElement, RecreationStage, timelineElements } from "./RecreationStage";
 import type { RecreationScene } from "./recreation-types";
+
+vi.mock("./PageSnapshotPanel", () => ({
+  PageSnapshotPanel: ({ ready }: { ready: boolean }) => <span data-testid="snapshot-ready">{String(ready)}</span>,
+}));
+
+import { durationForElement, RecreationStage, timelineElements } from "./RecreationStage";
 
 function makeScene(id: string, titleOrder: number): RecreationScene {
   return {
@@ -83,6 +88,13 @@ describe("RecreationStage playback controls", () => {
   it("marks paged scenes as contained video viewports", () => {
     const { container } = render(<RecreationStage scene={makePagedScene()} />);
     expect(container.querySelector(".answer-canvas-viewport.is-paged-video")).toBeInTheDocument();
+  });
+
+  it("makes final snapshot rendering ready before the playback timeline completes", async () => {
+    render(<RecreationStage scene={makePagedScene()} />);
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(screen.getByTestId("snapshot-ready")).toHaveTextContent("true");
+    expect(screen.queryByText("已完成")).not.toBeInTheDocument();
   });
 
   it("keeps initial autoplay behavior", async () => {

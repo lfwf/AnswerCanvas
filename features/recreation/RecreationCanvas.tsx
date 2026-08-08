@@ -24,13 +24,32 @@ function classForUnit(unit: string) {
   return /[A-Za-z0-9]/u.test(unit) ? "recreation-char latin-handwritten" : "recreation-char";
 }
 
+function approximateUnitWidth(unit: string) {
+  if (!unit.trim()) return .34;
+  if (/^[A-Za-z0-9]$/u.test(unit)) return .58;
+  if (/^[%+\-～~”"'/:·.,，。()（）\[\]]$/u.test(unit)) return .5;
+  return 1;
+}
+
+function fitScaleForText(value: string, width: number, fontSize: number) {
+  const availableWidth = Math.max(24, width - 14);
+  const longest = value.split(/\r?\n/u).reduce((max, line) => {
+    const units = splitGraphemes(line).reduce((sum, unit) => sum + approximateUnitWidth(unit), 0);
+    return Math.max(max, units * fontSize);
+  }, 0);
+  if (!longest || longest <= availableWidth) return 1;
+  return Math.max(.76, Math.min(1, availableWidth / longest));
+}
+
 function TextElement({ element, progress, scene, opacity }: { element: RecreationText; progress: number; scene: RecreationScene; opacity: number }) {
   const total = drawableGraphemes(element.text).length;
   const visible = Math.floor(total * Math.min(1, Math.max(0, progress)));
   const placement = resolveTextPlacement(element, scene.paper);
   const isPagedVideo = Boolean(scene.pages?.length);
-  const fontScale = isPagedVideo ? 1.12 : 1;
-  const lineScale = isPagedVideo ? 1.04 : 1;
+  const fontScale = isPagedVideo ? 1.18 : 1;
+  const lineScale = isPagedVideo ? 1.05 : 1;
+  const baseFontSize = element.style?.fontSize ? element.style.fontSize * fontScale : undefined;
+  const fitScale = isPagedVideo && baseFontSize ? fitScaleForText(element.text, element.width, baseFontSize) : 1;
   const resolvedLineHeight = placement.lineHeight ?? element.style?.lineHeight;
   let graphemeIndex = 0;
   const style = {
@@ -39,8 +58,8 @@ function TextElement({ element, progress, scene, opacity }: { element: Recreatio
     width: element.width,
     height: element.height,
     color: element.style?.color,
-    fontSize: element.style?.fontSize ? element.style.fontSize * fontScale : undefined,
-    lineHeight: resolvedLineHeight ? `${resolvedLineHeight * lineScale}px` : undefined,
+    fontSize: baseFontSize ? baseFontSize * fitScale : undefined,
+    lineHeight: resolvedLineHeight ? `${resolvedLineHeight * lineScale * fitScale}px` : undefined,
     fontWeight: element.style?.fontWeight,
     textAlign: element.style?.textAlign,
     letterSpacing: element.style?.letterSpacing,
@@ -48,7 +67,7 @@ function TextElement({ element, progress, scene, opacity }: { element: Recreatio
     opacity,
   } as React.CSSProperties;
   const jitter = element.style?.characterJitter ?? 0.66;
-  return <div className="recreation-text" data-text-id={element.id} style={style} aria-label={element.text}>
+  return <div className="recreation-text" data-text-id={element.id} data-fit-scale={fitScale.toFixed(3)} style={style} aria-label={element.text}>
     {element.text.split(/\r?\n/u).map((line, lineIndex) => <div className="recreation-line" key={`${element.id}:line:${lineIndex}`}>
       {splitGraphemes(line).map((unit) => {
         const index = graphemeIndex++;
@@ -136,6 +155,7 @@ export function RecreationCanvas({ scene, progress, completed = false, pageId }:
   const [markGeometry, setMarkGeometry] = useState<Record<string, RecreationMarkSegment[]>>({});
   const [annotationGeometry, setAnnotationGeometry] = useState<Record<string, AnnotationAnchor>>({});
   const resolvedPageId = pageId ?? scene.pages?.[0]?.id;
+  const isPagedVideo = Boolean(scene.pages?.length);
   const elements = useMemo(() => scene.elements.filter((element) => element.kind !== "page" && (!resolvedPageId || !element.pageId || element.pageId === resolvedPageId)), [resolvedPageId, scene.elements]);
 
   useLayoutEffect(() => {
@@ -194,6 +214,12 @@ export function RecreationCanvas({ scene, progress, completed = false, pageId }:
     "--paper-spacing": `${scene.paper.spacing}px`,
     "--paper-pattern-offset": `${scene.paper.patternOffset ?? scene.paper.spacing}px`,
     "--paper-pattern-thickness": `${scene.paper.patternThickness ?? 1}px`,
+    ...(isPagedVideo ? {
+      backgroundColor: scene.paper.background,
+      backgroundImage: "radial-gradient(ellipse at center, rgba(255,255,255,.2) 0 52%, rgba(113,83,48,.065) 100%), repeating-linear-gradient(8deg, rgba(92,65,38,.022) 0 1px, transparent 1px 6px), repeating-linear-gradient(96deg, rgba(119,88,51,.018) 0 1px, transparent 1px 11px), radial-gradient(circle at 21% 17%, rgba(103,76,46,.075) 0 .65px, transparent .9px), radial-gradient(circle at 72% 64%, rgba(126,94,55,.06) 0 .55px, transparent .85px)",
+      backgroundSize: "100% 100%, 9px 9px, 15px 15px, 23px 19px, 29px 31px",
+      backgroundBlendMode: "multiply, normal, normal, multiply, multiply",
+    } : {}),
   } as React.CSSProperties;
 
   return <article ref={paperRef} className={`recreation-paper recreation-paper--${scene.paper.pattern}`} style={paperStyle} data-scene-id={scene.id} data-page-id={resolvedPageId}>
