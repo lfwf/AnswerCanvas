@@ -14,6 +14,7 @@ import "./recreation.css";
 
 const RECORDING_PREVIEW_VERTICAL_CHROME = 92;
 const RECORDING_PREVIEW_HORIZONTAL_GUTTER = 24;
+const RECORDING_SCENE_RAIL_WIDTH = 184;
 
 function useReducedMotion() {
   const [reduced, setReduced] = useState(false);
@@ -106,7 +107,7 @@ export function RecreationStage({ scene, history = [] }: { scene: RecreationScen
   useEffect(() => {
     if (isPagedVideo) {
       const update = () => {
-        const maxWidth = Math.max(240, window.innerWidth - RECORDING_PREVIEW_HORIZONTAL_GUTTER);
+        const maxWidth = Math.max(240, window.innerWidth - RECORDING_SCENE_RAIL_WIDTH - RECORDING_PREVIEW_HORIZONTAL_GUTTER);
         const maxHeight = Math.max(320, window.innerHeight - RECORDING_PREVIEW_VERTICAL_CHROME);
         const previewScale = Math.min(maxWidth / scene.width, maxHeight / scene.height, recordingFrame.scale);
         setScale(Math.max(0.2, previewScale));
@@ -184,13 +185,27 @@ export function RecreationStage({ scene, history = [] }: { scene: RecreationScen
   const statusLabel = !fontsReady ? "正在加载字体" : status === "complete" ? "已完成" : status === "paused" ? "已暂停" : status === "playing" ? "正在书写" : "准备开始";
   const previewWidth = Math.round(scene.width * scale);
   const previewHeight = Math.round(scene.height * scale);
-  const shellStyle = isPagedVideo ? { display: "block", width: "100%", height: "100dvh", minWidth: 0, minHeight: 0, overflow: "hidden", background: "#ebe8df" } as React.CSSProperties : undefined;
-  const panelStyle = isPagedVideo ? { display: "block", width: "100%", height: "100dvh", minHeight: 0, overflow: "hidden", background: "#ebe8df" } as React.CSSProperties : undefined;
+  const shellStyle = isPagedVideo ? { display: "grid", gridTemplateColumns: `${RECORDING_SCENE_RAIL_WIDTH}px minmax(0, 1fr)`, width: "100%", height: "100dvh", minWidth: 0, minHeight: 0, overflow: "hidden", background: "#ebe8df" } as React.CSSProperties : undefined;
+  const panelStyle = isPagedVideo ? { display: "block", width: "100%", height: "100dvh", minWidth: 0, minHeight: 0, overflow: "hidden", background: "#ebe8df" } as React.CSSProperties : undefined;
   const threadStyle = isPagedVideo ? { overflow: "hidden", padding: "10px 12px 12px", width: "100%", height: "100dvh", minHeight: 0 } as React.CSSProperties : undefined;
-  const messageStyle = isPagedVideo ? { width: previewWidth, maxWidth: "calc(100vw - 24px)", margin: "0 auto" } as React.CSSProperties : undefined;
+  const messageStyle = isPagedVideo ? { width: previewWidth, maxWidth: `calc(100vw - ${RECORDING_SCENE_RAIL_WIDTH + RECORDING_PREVIEW_HORIZONTAL_GUTTER}px)`, margin: "0 auto" } as React.CSSProperties : undefined;
 
   return <main className={`conversation-shell${isPagedVideo ? " is-recording-layout" : ""}`} style={shellStyle}>
-    {!isPagedVideo ? <aside className="conversation-sidebar" aria-label="历史记录">
+    {isPagedVideo ? <aside aria-label="切换场景" style={{ display: "flex", flexDirection: "column", minWidth: 0, height: "100dvh", padding: "16px 10px 12px", borderRight: "1px solid rgba(88,80,67,.12)", background: "#f5f2ea", overflow: "hidden" }}>
+      <Link href="/" aria-label="AnswerCanvas 场景列表" style={{ display: "flex", alignItems: "center", gap: 9, padding: "0 6px 14px", color: "#252525", textDecoration: "none" }}>
+        <span className="brand-mark">AC</span><strong style={{ fontSize: 13, fontWeight: 700 }}>AnswerCanvas</strong>
+      </Link>
+      <div style={{ padding: "6px 8px 8px", color: "#8b887f", fontSize: 10, fontWeight: 700, letterSpacing: ".08em" }}>切换场景</div>
+      <nav style={{ display: "grid", gap: 4, minHeight: 0, overflowY: "auto", padding: "0 2px" }}>
+        {historyScenes.map((item) => {
+          const active = item.id === scene.id;
+          return <Link href={`/scenes/${item.id}`} key={item.id} aria-current={active ? "page" : undefined} title={item.title} style={{ display: "block", minWidth: 0, padding: "9px 10px", borderRadius: 10, background: active ? "#e5e0d4" : "transparent", color: active ? "#25231f" : "#68645b", fontSize: 11, fontWeight: active ? 700 : 560, lineHeight: 1.35, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {item.title}
+          </Link>;
+        })}
+      </nav>
+      <Link href="/" style={{ marginTop: "auto", padding: "10px 9px 4px", borderTop: "1px solid rgba(88,80,67,.1)", color: "#77736a", fontSize: 10, textDecoration: "none" }}>查看全部场景 →</Link>
+    </aside> : <aside className="conversation-sidebar" aria-label="历史记录">
       <div className="conversation-brand">
         <Link className="brand-mark" href="/" aria-label="AnswerCanvas 场景列表">AC</Link>
         <div><h1>AnswerCanvas</h1><p>Handwritten answers</p></div>
@@ -203,7 +218,7 @@ export function RecreationStage({ scene, history = [] }: { scene: RecreationScen
         </Link>)}
       </nav>
       <div className="sidebar-note"><strong>图片转手写</strong><span>新图片会生成新的历史场景，已有回答会一直保留。</span></div>
-    </aside> : null}
+    </aside>}
 
     <section className="conversation-panel" style={panelStyle}>
       {!isPagedVideo ? <header className="conversation-topbar">
