@@ -46,8 +46,8 @@ function TextElement({ element, progress, scene, opacity }: { element: Recreatio
   const visible = Math.floor(total * Math.min(1, Math.max(0, progress)));
   const placement = resolveTextPlacement(element, scene.paper);
   const isPagedVideo = Boolean(scene.pages?.length);
-  const fontScale = isPagedVideo ? 1.12 : 1;
-  const lineScale = isPagedVideo ? 1.04 : 1;
+  const fontScale = isPagedVideo ? 1.18 : 1;
+  const lineScale = isPagedVideo ? 1.05 : 1;
   const baseFontSize = element.style?.fontSize ? element.style.fontSize * fontScale : undefined;
   const fitScale = isPagedVideo && baseFontSize ? fitScaleForText(element.text, element.width, baseFontSize) : 1;
   const resolvedLineHeight = placement.lineHeight ?? element.style?.lineHeight;
