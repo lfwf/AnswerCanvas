@@ -11,8 +11,24 @@ const yellowHighlight = "rgba(246,207,76,.42)";
 const blueHighlight = "rgba(86,150,226,.30)";
 const greenHighlight = "rgba(70,177,118,.28)";
 const purpleHighlight = "rgba(157,103,207,.25)";
+const sceneFontScale = 1.1;
+const sceneLineScale = 1.04;
 
-const text = (pageId: string, id: string, order: number, x: number, y: number, width: number, value: string, style: RecreationTextStyle = {}): RecreationText => ({ id, kind: "text", pageId, order, x, y, width, text: value, style });
+const text = (pageId: string, id: string, order: number, x: number, y: number, width: number, value: string, style: RecreationTextStyle = {}): RecreationText => ({
+  id,
+  kind: "text",
+  pageId,
+  order,
+  x,
+  y,
+  width,
+  text: value,
+  style: {
+    ...style,
+    ...(style.fontSize ? { fontSize: Math.round(style.fontSize * sceneFontScale) } : {}),
+    ...(style.lineHeight ? { lineHeight: Math.round(style.lineHeight * sceneLineScale) } : {}),
+  },
+});
 const stroke = (pageId: string, id: string, order: number, path: string, style: Omit<RecreationStroke, "id" | "kind" | "order" | "animated" | "pageId" | "path"> = {}): RecreationStroke => {
   const handDrawn = style.handDrawn !== false;
   return { id, kind: "stroke", pageId, order, path, ...style, ...(handDrawn ? { roughness: Math.max(style.roughness ?? 0, 1.35), bowing: Math.max(style.bowing ?? 0, 1.05) } : {}) };
@@ -57,7 +73,7 @@ export const iphone18ProRumorsVideoScene: RecreationScene = {
   prompt: "把这张 iPhone 18 Pro 爆料参数笔记做成适合小红书竖屏录制的手写视频。7 个模块必须分开逐页演示，每页内容放大，所有图表和图标按人的真实书写/绘制逻辑依次完成。",
   sourceName: "iPhone 18 Pro 爆料参数笔记.png",
   createdAt: "2026-08-07",
-  snapshotRevision: "2026-08-08.4",
+  snapshotRevision: "2026-08-08.5",
   width: 900,
   height: 1600,
   paper: { background: "#fbfaf6", pattern: "ruled", patternColor: "rgba(78,102,126,.12)", spacing: 48, patternOffset: 44, patternThickness: 1 },
@@ -157,8 +173,8 @@ export const iphone18ProRumorsVideoScene: RecreationScene = {
     turn("turn-battery", 415, "battery"),
 
     ...pageTitle("battery", 500, "5", "续航", blue),
-    text("battery", "battery-bullets", 503, 86, 220, 720, "• 更大电池（传闻）\n• 续航：预计 +10% ~ +15%\n• 重度使用更稳\n• 轻度使用更久", { fontSize: 39, lineHeight: 78 }),
-    highlight("battery", "battery-hi-range", 503.1, "battery-bullets", "+10% ~ +15%", greenHighlight),
+    text("battery", "battery-bullets", 503, 86, 220, 720, "• 更大电池（传闻）\n• 续航：预计 +10%～+15%\n• 重度使用更稳\n• 轻度使用更久", { fontSize: 39, lineHeight: 78 }),
+    highlight("battery", "battery-hi-range", 503.1, "battery-bullets", "+10%～+15%", greenHighlight),
     box("battery", "battery-outline", 504, 95, 640, 360, 185, { stroke: ink, strokeWidth: 3, radius: 18, roughness: .9 }),
     box("battery", "battery-tip", 505, 455, 700, 32, 65, { stroke: ink, strokeWidth: 2.4, radius: 5, roughness: .7 }),
     box("battery", "cell-1", 506, 120, 680, 62, 105, { stroke: green, strokeWidth: 2, fill: "rgba(21,138,78,.28)", radius: 5, roughness: .6 }),
@@ -173,7 +189,7 @@ export const iphone18ProRumorsVideoScene: RecreationScene = {
     stroke("battery", "battery-trend", 515, "M 285 1085 Q 430 1035 635 930", { color: green, width: 4, roughness: 1.1 }),
     box("battery", "battery-dot-a", 516, 274, 1074, 18, 18, { stroke: green, fill: green, strokeWidth: 1, radius: 9, roughness: .4 }),
     box("battery", "battery-dot-b", 517, 626, 920, 18, 18, { stroke: green, fill: green, strokeWidth: 1, radius: 9, roughness: .4 }),
-    text("battery", "battery-value", 518, 560, 835, 250, "+10% ~ +15%", { color: green, fontSize: 38, lineHeight: 48 }),
+    text("battery", "battery-value", 518, 550, 835, 275, "+10%～+15%", { color: green, fontSize: 38, lineHeight: 48 }),
     box("battery", "battery-takeaway-box", 518.4, 130, 1330, 640, 130, { stroke: green, strokeWidth: 2, radius: 24, roughness: .7, fill: "rgba(21,138,78,.05)" }),
     text("battery", "battery-takeaway", 518.5, 130, 1365, 640, "重度更稳 · 轻度更久", { color: green, fontSize: 36, lineHeight: 48, fontWeight: 620, textAlign: "center" }),
     hold("battery", "battery-hold", 519),
@@ -205,7 +221,8 @@ export const iphone18ProRumorsVideoScene: RecreationScene = {
     text("appearance", "swatch-heading", 704, 100, 590, 700, "传闻配色", { color: purple, fontSize: 40, lineHeight: 50, textAlign: "center" }),
     box("appearance", "swatch-black", 705, 105, 725, 180, 180, { stroke: ink, fill: "#444441", strokeWidth: 2, radius: 24, roughness: .8 }),
     text("appearance", "swatch-black-label", 706, 105, 925, 180, "曜石黑", { fontSize: 31, textAlign: "center" }),
-    box("appearance", "swatch-white", 707, 360, 725, 180, 180, { stroke: ink, fill: "#f6f2e7", strokeWidth: 2, radius: 24, roughness: .8 }),
+    box("appearance", "swatch-white", 707, 360, 725, 180, 180, { stroke: "#595a5c", fill: "#ffffff", strokeWidth: 3, radius: 24, roughness: 1.15, bowing: 1.1 }),
+    box("appearance", "swatch-white-inner", 707.2, 372, 737, 156, 156, { stroke: "#d2d5d9", fill: "none", strokeWidth: 1.6, radius: 18, roughness: .7, bowing: .7 }),
     text("appearance", "swatch-white-label", 708, 360, 925, 180, "星光白", { fontSize: 31, textAlign: "center" }),
     box("appearance", "swatch-blue", 709, 615, 725, 180, 180, { stroke: blue, fill: "#345d86", strokeWidth: 2, radius: 24, roughness: .8 }),
     text("appearance", "swatch-blue-label", 710, 615, 925, 180, "深空蓝", { fontSize: 31, textAlign: "center" }),
@@ -237,7 +254,7 @@ export const iphone18ProRumorsVideoScene: RecreationScene = {
     text("summary", "sum-5", 814, 90, 885, 330, "Wi-Fi 7", { color: orange, fontSize: 55, textAlign: "center" }),
     text("summary", "sum-5-caption", 815, 90, 975, 330, "通信", { fontSize: 30, textAlign: "center" }),
     box("summary", "sum-card-6", 816, 480, 840, 330, 220, { stroke: green, strokeWidth: 2.4, dash: "10 8", radius: 20, roughness: .7, fill: "rgba(70,177,118,.04)" }),
-    text("summary", "sum-6", 817, 480, 885, 330, "+10%~15%", { color: green, fontSize: 51, textAlign: "center" }),
+    text("summary", "sum-6", 817, 480, 885, 330, "+10%～15%", { color: green, fontSize: 51, textAlign: "center" }),
     text("summary", "sum-6-caption", 818, 480, 975, 330, "续航预期", { fontSize: 30, textAlign: "center" }),
     text("summary", "summary-note", 819, 100, 1190, 700, "以上为供应链 / 媒体爆料整理\n最终以苹果官方发布为准。", { color: gray, fontSize: 32, lineHeight: 56, textAlign: "center" }),
     stroke("summary", "summary-final-line", 820, "M 170 1370 Q 450 1355 730 1370", { color: blue, width: 3.2, roughness: 1.1 }),
