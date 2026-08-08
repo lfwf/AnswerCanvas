@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600&family=Patrick+Hand&display=swap");
 
 @font-face {
   font-family: "AnswerCanvasHandwriting";
@@ -12,12 +12,10 @@
   font-family: "AnswerCanvasHandwriting", "Caveat", "STKaiti", "KaiTi", "Segoe Print", "Bradley Hand", cursive;
 }
 
-/*
- * Handwriting is a product invariant, not a decorative fallback.
- * RecreationCanvas may provide per-run font hints for measurement, but visible
- * CJK text must stay on the bundled handwriting face whenever it is available.
- */
-.recreation-paper .recreation-text,
-.recreation-paper .recreation-annotation {
-  font-family: "AnswerCanvasHandwriting", "Caveat", "STKaiti", "KaiTi", "Segoe Print", "Bradley Hand", cursive !important;
+.numeric-handwritten {
+  font-family: "Patrick Hand", "Segoe Print", "Comic Sans MS", "Bradley Hand", "AnswerCanvasHandwriting", cursive;
+  font-weight: 400;
+  font-synthesis: none;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .01em;
 }
