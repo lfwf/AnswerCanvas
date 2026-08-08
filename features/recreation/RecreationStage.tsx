@@ -172,8 +172,12 @@ export function RecreationStage({ scene, history = [] }: { scene: RecreationScen
   }, []);
 
   const statusLabel = !fontsReady ? "正在加载字体" : status === "complete" ? "已完成" : status === "paused" ? "已暂停" : status === "playing" ? "正在书写" : "准备开始";
+  const shellStyle = isPagedVideo ? { display: "block", width: "100%", minWidth: recordingFrame.width, height: "auto", minHeight: recordingFrame.height, overflow: "auto", background: "#ebe8df" } as React.CSSProperties : undefined;
+  const panelStyle = isPagedVideo ? { display: "block", minHeight: recordingFrame.height, background: "#ebe8df" } as React.CSSProperties : undefined;
+  const threadStyle = isPagedVideo ? { overflow: "visible", padding: "14px 0 48px", minHeight: recordingFrame.height } as React.CSSProperties : undefined;
+  const messageStyle = isPagedVideo ? { width: recordingFrame.width, maxWidth: "none", margin: "0 auto" } as React.CSSProperties : undefined;
 
-  return <main className={`conversation-shell${isPagedVideo ? " is-recording-layout" : ""}`}>
+  return <main className={`conversation-shell${isPagedVideo ? " is-recording-layout" : ""}`} style={shellStyle}>
     {!isPagedVideo ? <aside className="conversation-sidebar" aria-label="历史记录">
       <div className="conversation-brand">
         <Link className="brand-mark" href="/" aria-label="AnswerCanvas 场景列表">AC</Link>
@@ -189,17 +193,17 @@ export function RecreationStage({ scene, history = [] }: { scene: RecreationScen
       <div className="sidebar-note"><strong>图片转手写</strong><span>新图片会生成新的历史场景，已有回答会一直保留。</span></div>
     </aside> : null}
 
-    <section className="conversation-panel">
+    <section className="conversation-panel" style={panelStyle}>
       {!isPagedVideo ? <header className="conversation-topbar">
         <div className="conversation-mobile-brand"><span className="brand-mark">AC</span><strong>AnswerCanvas</strong></div>
         <div className="conversation-title"><strong>{scene.title}</strong><span>图片手写回答</span></div>
         <Link className="conversation-scenes-link" href="/">场景列表</Link>
       </header> : null}
 
-      <div className="conversation-thread">
+      <div className="conversation-thread" style={threadStyle}>
         {!isPagedVideo ? <div className="user-message-row"><div className="user-message">{prompt}</div></div> : null}
 
-        <article className="assistant-message" aria-label="AnswerCanvas 手写回答">
+        <article className="assistant-message" aria-label="AnswerCanvas 手写回答" style={messageStyle}>
           <header className="assistant-message-header">
             <div className="assistant-identity"><span className="assistant-avatar">AC</span><div><strong>AnswerCanvas</strong><span>{statusLabel}</span></div></div>
             <nav className="answer-controls" aria-label="播放控制">
@@ -215,7 +219,7 @@ export function RecreationStage({ scene, history = [] }: { scene: RecreationScen
             className={`answer-canvas-viewport${isPagedVideo ? " is-paged-video is-recording-frame" : ""}${transparentSurface ? " is-transparent-surface" : ""}`}
             ref={canvasViewportRef}
             data-recording-resolution={isPagedVideo ? `${recordingFrame.width}x${recordingFrame.height}` : undefined}
-            style={isPagedVideo ? { width: recordingFrame.width, height: recordingFrame.height } : undefined}
+            style={isPagedVideo ? { width: recordingFrame.width, height: recordingFrame.height, margin: "0 auto", overflow: "hidden" } : undefined}
           >
             <div className="recreation-paper-shell" style={{ width: scene.width * scale, height: scene.height * scale }}>
               <div className="recreation-canvas-transform recreation-page-stage" style={{ width: scene.width, height: scene.height, transform: `scale(${scale})` }}>
