@@ -11,3 +11,13 @@
 .paper-page {
   font-family: "AnswerCanvasHandwriting", "Caveat", "STKaiti", "KaiTi", "Segoe Print", "Bradley Hand", cursive;
 }
+
+/*
+ * Handwriting is a product invariant, not a decorative fallback.
+ * RecreationCanvas may provide per-run font hints for measurement, but visible
+ * CJK text must stay on the bundled handwriting face whenever it is available.
+ */
+.recreation-paper .recreation-text,
+.recreation-paper .recreation-annotation {
+  font-family: "AnswerCanvasHandwriting", "Caveat", "STKaiti", "KaiTi", "Segoe Print", "Bradley Hand", cursive !important;
+}
