@@ -36,7 +36,7 @@ afterEach(() => {
 });
 
 describe("PageSnapshotPanel", () => {
-  it("generates and persists completed pages as soon as the scene render is ready", async () => {
+  it("generates 1080x1920-equivalent completed pages as soon as the scene render is ready", async () => {
     const { rerender } = render(<PageSnapshotPanel scene={scene} ready={false} />);
     expect(screen.getByRole("button", { name: "场景加载后截图" })).toBeDisabled();
     expect(toPng).not.toHaveBeenCalled();
@@ -44,10 +44,11 @@ describe("PageSnapshotPanel", () => {
     rerender(<PageSnapshotPanel scene={scene} ready />);
     await waitFor(() => expect(screen.getByRole("button", { name: "已保存 2 张" })).toBeEnabled());
     expect(toPng).toHaveBeenCalledTimes(2);
+    expect(toPng).toHaveBeenNthCalledWith(1, expect.anything(), expect.objectContaining({ pixelRatio: 1.2 }));
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(fetch).toHaveBeenCalledWith("/api/recreation/snapshots", expect.objectContaining({ method: "POST" }));
     const request = vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit;
-    expect(String(request.body)).toContain('"revision":"2+paper-text-v2"');
+    expect(String(request.body)).toContain('"revision":"2+paper-text-v3-recording-1080"');
 
     fireEvent.click(screen.getByRole("button", { name: "已保存 2 张" }));
     expect(screen.getByRole("dialog", { name: "每页最终截图" })).toBeInTheDocument();

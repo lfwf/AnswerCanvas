@@ -4,9 +4,10 @@
 import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { RecreationCanvas } from "./RecreationCanvas";
+import { recordingScaleFor } from "./recreation-recording";
 import type { RecreationScene } from "./recreation-types";
 
-const SNAPSHOT_RENDER_REVISION = "paper-text-v2";
+const SNAPSHOT_RENDER_REVISION = "paper-text-v3-recording-1080";
 
 interface PageSnapshot {
   pageId: string;
@@ -68,6 +69,7 @@ export function PageSnapshotPanel({ scene, ready }: { scene: RecreationScene; re
   const revisionKey = `${scene.id}:${persistedRevision}`;
   const capturePage = pages.find((page) => page.id === capturePageId) ?? null;
   const shouldRenderSource = ready && state === "generating" && Boolean(capturePage);
+  const snapshotPixelRatio = scene.pages?.length ? recordingScaleFor(scene) : 1;
 
   useEffect(() => {
     if (lightboxIndex === null) return;
@@ -106,7 +108,7 @@ export function PageSnapshotPanel({ scene, ready }: { scene: RecreationScene; re
           if (!paper) throw new Error(`第 ${index + 1} 页截图画布未准备好`);
           const dataUrl = await withTimeout(toPng(paper, {
             cacheBust: true,
-            pixelRatio: 1,
+            pixelRatio: snapshotPixelRatio,
             backgroundColor: scene.paper.background === "transparent" ? "#f5efe2" : scene.paper.background,
           }), 15000, `第 ${index + 1} 页截图超时`);
           result.push({ pageId: page.id, title: page.title, dataUrl });
@@ -157,7 +159,7 @@ export function PageSnapshotPanel({ scene, ready }: { scene: RecreationScene; re
 
     void generate();
     return () => { cancelled = true; };
-  }, [pages, persistedRevision, ready, retryToken, revisionKey, scene.id, scene.paper.background]);
+  }, [pages, persistedRevision, ready, retryToken, revisionKey, scene.id, scene.paper.background, snapshotPixelRatio]);
 
   if (!pages.length) return null;
 

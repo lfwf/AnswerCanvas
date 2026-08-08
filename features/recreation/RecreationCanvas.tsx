@@ -20,8 +20,14 @@ export interface RecreationCanvasProps {
 
 interface AnnotationAnchor { x: number; y: number; width: number; height: number; }
 
+const CJK_HANDWRITING_STACK = '"Kaiti SC", "STKaiti", "KaiTi", "DFKai-SB", "AnswerCanvasHandwriting", cursive';
+
 function classForUnit(unit: string) {
   return /[A-Za-z0-9]/u.test(unit) ? "recreation-char latin-handwritten" : "recreation-char";
+}
+
+function containsCjk(value: string) {
+  return /[\p{Script=Han}\u3000-\u303f\uff00-\uffef]/u.test(value);
 }
 
 function approximateUnitWidth(unit: string) {
@@ -51,6 +57,7 @@ function TextElement({ element, progress, scene, opacity }: { element: Recreatio
   const baseFontSize = element.style?.fontSize ? element.style.fontSize * fontScale : undefined;
   const fitScale = isPagedVideo && baseFontSize ? fitScaleForText(element.text, element.width, baseFontSize) : 1;
   const resolvedLineHeight = placement.lineHeight ?? element.style?.lineHeight;
+  const cjkRun = containsCjk(element.text);
   let graphemeIndex = 0;
   const style = {
     left: placement.left,
@@ -58,16 +65,18 @@ function TextElement({ element, progress, scene, opacity }: { element: Recreatio
     width: element.width,
     height: element.height,
     color: element.style?.color,
+    fontFamily: cjkRun ? CJK_HANDWRITING_STACK : undefined,
     fontSize: baseFontSize ? baseFontSize * fitScale : undefined,
     lineHeight: resolvedLineHeight ? `${resolvedLineHeight * lineScale * fitScale}px` : undefined,
-    fontWeight: element.style?.fontWeight,
+    fontWeight: cjkRun ? 400 : element.style?.fontWeight,
+    fontSynthesis: cjkRun ? "none" : undefined,
     textAlign: element.style?.textAlign,
     letterSpacing: element.style?.letterSpacing,
     transform: element.style?.rotate ? `rotate(${element.style.rotate}deg)` : undefined,
     opacity,
   } as React.CSSProperties;
-  const jitter = element.style?.characterJitter ?? 0.66;
-  return <div className="recreation-text" data-text-id={element.id} data-fit-scale={fitScale.toFixed(3)} style={style} aria-label={element.text}>
+  const jitter = element.style?.characterJitter ?? (isPagedVideo ? 0.14 : 0.66);
+  return <div className="recreation-text" data-text-id={element.id} data-fit-scale={fitScale.toFixed(3)} data-font-role={cjkRun ? "cjk-unified" : "default"} style={style} aria-label={element.text}>
     {element.text.split(/\r?\n/u).map((line, lineIndex) => <div className="recreation-line" key={`${element.id}:line:${lineIndex}`}>
       {splitGraphemes(line).map((unit) => {
         const index = graphemeIndex++;
@@ -87,8 +96,9 @@ function AnnotationElement({ element, progress, anchor, opacity }: { element: Re
   const position = element.position ?? "above";
   const left = anchor ? anchor.x + anchor.width / 2 - width / 2 + (element.offsetX ?? 0) : 0;
   const top = anchor ? (position === "above" ? anchor.y - fontSize * 1.65 : anchor.y + anchor.height + 8) + (element.offsetY ?? 0) : 0;
-  const jitter = element.characterJitter ?? 0.42;
-  return <div className="recreation-annotation" data-annotation-id={element.id} aria-label={element.label} style={{ left, top, width, color: element.color ?? "#244f9d", fontSize, opacity: anchor ? opacity : 0 }}>
+  const cjkRun = containsCjk(element.label);
+  const jitter = element.characterJitter ?? 0.16;
+  return <div className="recreation-annotation" data-annotation-id={element.id} aria-label={element.label} style={{ left, top, width, color: element.color ?? "#244f9d", fontFamily: cjkRun ? CJK_HANDWRITING_STACK : undefined, fontWeight: cjkRun ? 400 : undefined, fontSynthesis: cjkRun ? "none" : undefined, fontSize, opacity: anchor ? opacity : 0 }}>
     {units.map((unit, index) => <span className={classForUnit(unit)} key={`${element.id}:${index}`} style={{ visibility: index < visible ? "visible" : "hidden", transform: unit.trim() ? characterTransform(element.id, index, jitter) : undefined }} aria-hidden="true">{unit === " " ? "\u00a0" : unit}</span>)}
   </div>;
 }

@@ -26,6 +26,7 @@ const pagedScene: RecreationScene = {
   pages: [{ id: "one", title: "One" }],
   elements: [
     { id: "box-copy", kind: "text", pageId: "one", order: 1, x: 100, y: 100, width: 190, text: "多任务切换更轻松", style: { fontSize: 58, lineHeight: 72 } },
+    { id: "mixed-title", kind: "text", pageId: "one", order: 2, x: 100, y: 240, width: 700, text: "AI 收到一句话以后发生了什么？", style: { fontSize: 62, lineHeight: 78, fontWeight: 700 } },
   ],
 };
 
@@ -59,5 +60,16 @@ describe("RecreationCanvas", () => {
     expect(Number(copy?.dataset.fitScale)).toBeLessThan(1);
     expect(Number.parseFloat(copy?.style.fontSize ?? "0")).toBeLessThan(58 * 1.18);
     expect(copy?.style.width).toBe("190px");
+  });
+
+  it("uses one stable CJK handwriting stack for an entire mixed-language line", () => {
+    const { container } = render(<RecreationCanvas scene={pagedScene} completed pageId="one" />);
+    const title = container.querySelector<HTMLElement>('[data-text-id="mixed-title"]');
+    expect(title).toHaveAttribute("data-font-role", "cjk-unified");
+    expect(title?.style.fontFamily).toContain("KaiTi");
+    expect(title?.style.fontWeight).toBe("400");
+    const chineseChars = Array.from(title?.querySelectorAll<HTMLElement>(".recreation-char:not(.latin-handwritten)") ?? []);
+    expect(chineseChars.length).toBeGreaterThan(5);
+    expect(chineseChars.every((char) => !char.style.transform.includes("scaleX"))).toBe(true);
   });
 });
