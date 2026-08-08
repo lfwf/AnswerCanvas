@@ -23,7 +23,7 @@ describe("iPhone 18 Pro paged rumor video scene", () => {
   it("uses a vertical recording canvas, explicit snapshot revision and nine readable pages", () => {
     expect(iphone18ProRumorsVideoScene.width).toBe(900);
     expect(iphone18ProRumorsVideoScene.height).toBe(1600);
-    expect(iphone18ProRumorsVideoScene.snapshotRevision).toBe("2026-08-08.4");
+    expect(iphone18ProRumorsVideoScene.snapshotRevision).toBe("2026-08-08.5");
     expect(iphone18ProRumorsVideoScene.pages?.map((page) => page.id)).toEqual(["cover", "chip-ai", "memory", "display", "camera", "battery", "connectivity", "appearance", "summary"]);
   });
 
@@ -85,6 +85,37 @@ describe("iPhone 18 Pro paged rumor video scene", () => {
       if (element.kind !== "view") throw new Error(`${id} is not a view hold`);
       expect(element.durationMs).toBeGreaterThanOrEqual(1000);
     }
+  });
+
+  it("uses the baseline-safe full-width range mark for battery percentages", () => {
+    for (const id of ["battery-bullets", "battery-value", "sum-6"] as const) {
+      const element = byId(id);
+      if (element.kind !== "text") throw new Error(`${id} is not text`);
+      expect(element.text).toContain("～");
+      expect(element.text).not.toContain("~");
+    }
+  });
+
+  it("renders starlight white as a clearly separated white swatch", () => {
+    const swatch = byId("swatch-white");
+    const inner = byId("swatch-white-inner");
+    if (swatch.kind !== "box" || inner.kind !== "box") throw new Error("white swatch boxes are missing");
+    expect(swatch.fill).toBe("#ffffff");
+    expect(swatch.stroke).toBe("#595a5c");
+    expect(swatch.strokeWidth).toBeGreaterThanOrEqual(3);
+    expect(inner.stroke).toBe("#d2d5d9");
+    expect(order("swatch-white")).toBeLessThan(order("swatch-white-inner"));
+    expect(order("swatch-white-inner")).toBeLessThan(order("swatch-white-label"));
+  });
+
+  it("enlarges authored scene typography for phone readability", () => {
+    const body = byId("battery-bullets");
+    const title = byId("battery-title");
+    const label = byId("swatch-white-label");
+    if (body.kind !== "text" || title.kind !== "text" || label.kind !== "text") throw new Error("expected text elements");
+    expect(body.style?.fontSize).toBeGreaterThan(39);
+    expect(title.style?.fontSize).toBeGreaterThan(50);
+    expect(label.style?.fontSize).toBeGreaterThan(31);
   });
 
   it("keeps implementation meta copy out and gives silent-video pages factual takeaways", () => {
