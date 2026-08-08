@@ -7,6 +7,7 @@ import { RecreationCanvas } from "./RecreationCanvas";
 import { PageSnapshotPanel } from "./PageSnapshotPanel";
 import { pagePresentationFor } from "./recreation-pages";
 import { RecreationPlayer, type RecreationEvent } from "./recreation-player";
+import { recordingFrameFor } from "./recreation-recording";
 import type { RecreationAnimatedElement, RecreationScene } from "./recreation-types";
 import { isAnimatedElement } from "./recreation-types";
 import "./recreation.css";
@@ -97,24 +98,24 @@ export function RecreationStage({ scene, history = [] }: { scene: RecreationScen
   const pageIndex = scene.pages?.findIndex((page) => page.id === pageForIndicator) ?? -1;
   const isPagedVideo = Boolean(scene.pages?.length);
   const transparentSurface = scene.paper.background === "transparent";
+  const recordingFrame = useMemo(() => recordingFrameFor(scene), [scene]);
 
   useEffect(() => {
+    if (isPagedVideo) {
+      setScale(recordingFrame.scale);
+      return;
+    }
     const viewport = canvasViewportRef.current;
     if (!viewport || typeof ResizeObserver === "undefined") return;
-    const update = (width: number, height: number) => {
+    const update = (width: number) => {
       const widthScale = Math.max(0.22, (width - 8) / scene.width);
-      if (!isPagedVideo || height <= 0) {
-        setScale(Math.min(1, widthScale));
-        return;
-      }
-      const heightScale = Math.max(0.22, (height - 8) / scene.height);
-      setScale(Math.min(1, widthScale, heightScale));
+      setScale(Math.min(1, widthScale));
     };
-    update(viewport.clientWidth, viewport.clientHeight);
-    const observer = new ResizeObserver(([entry]) => update(entry.contentRect.width, entry.contentRect.height));
+    update(viewport.clientWidth);
+    const observer = new ResizeObserver(([entry]) => update(entry.contentRect.width));
     observer.observe(viewport);
     return () => observer.disconnect();
-  }, [isPagedVideo, scene.height, scene.width]);
+  }, [isPagedVideo, recordingFrame.scale, scene.width]);
 
   useEffect(() => {
     if (!fontsReady) return;
@@ -172,8 +173,8 @@ export function RecreationStage({ scene, history = [] }: { scene: RecreationScen
 
   const statusLabel = !fontsReady ? "正在加载字体" : status === "complete" ? "已完成" : status === "paused" ? "已暂停" : status === "playing" ? "正在书写" : "准备开始";
 
-  return <main className="conversation-shell">
-    <aside className="conversation-sidebar" aria-label="历史记录">
+  return <main className={`conversation-shell${isPagedVideo ? " is-recording-layout" : ""}`}>
+    {!isPagedVideo ? <aside className="conversation-sidebar" aria-label="历史记录">
       <div className="conversation-brand">
         <Link className="brand-mark" href="/" aria-label="AnswerCanvas 场景列表">AC</Link>
         <div><h1>AnswerCanvas</h1><p>Handwritten answers</p></div>
@@ -186,17 +187,17 @@ export function RecreationStage({ scene, history = [] }: { scene: RecreationScen
         </Link>)}
       </nav>
       <div className="sidebar-note"><strong>图片转手写</strong><span>新图片会生成新的历史场景，已有回答会一直保留。</span></div>
-    </aside>
+    </aside> : null}
 
     <section className="conversation-panel">
-      <header className="conversation-topbar">
+      {!isPagedVideo ? <header className="conversation-topbar">
         <div className="conversation-mobile-brand"><span className="brand-mark">AC</span><strong>AnswerCanvas</strong></div>
         <div className="conversation-title"><strong>{scene.title}</strong><span>图片手写回答</span></div>
         <Link className="conversation-scenes-link" href="/">场景列表</Link>
-      </header>
+      </header> : null}
 
       <div className="conversation-thread">
-        <div className="user-message-row"><div className="user-message">{prompt}</div></div>
+        {!isPagedVideo ? <div className="user-message-row"><div className="user-message">{prompt}</div></div> : null}
 
         <article className="assistant-message" aria-label="AnswerCanvas 手写回答">
           <header className="assistant-message-header">
@@ -210,7 +211,12 @@ export function RecreationStage({ scene, history = [] }: { scene: RecreationScen
             </nav>
           </header>
 
-          <div className={`answer-canvas-viewport${isPagedVideo ? " is-paged-video" : ""}${transparentSurface ? " is-transparent-surface" : ""}`} ref={canvasViewportRef}>
+          <div
+            className={`answer-canvas-viewport${isPagedVideo ? " is-paged-video is-recording-frame" : ""}${transparentSurface ? " is-transparent-surface" : ""}`}
+            ref={canvasViewportRef}
+            data-recording-resolution={isPagedVideo ? `${recordingFrame.width}x${recordingFrame.height}` : undefined}
+            style={isPagedVideo ? { width: recordingFrame.width, height: recordingFrame.height } : undefined}
+          >
             <div className="recreation-paper-shell" style={{ width: scene.width * scale, height: scene.height * scale }}>
               <div className="recreation-canvas-transform recreation-page-stage" style={{ width: scene.width, height: scene.height, transform: `scale(${scale})` }}>
                 {pagePresentation.incomingPageId && pagePresentation.outgoingPageId ? <>
@@ -223,14 +229,14 @@ export function RecreationStage({ scene, history = [] }: { scene: RecreationScen
         </article>
       </div>
 
-      <form className="conversation-composer" onSubmit={(event) => event.preventDefault()} aria-label="模拟聊天输入框">
+      {!isPagedVideo ? <form className="conversation-composer" onSubmit={(event) => event.preventDefault()} aria-label="模拟聊天输入框">
         <div className="composer-box">
           <button className="composer-plus" type="button" aria-label="添加内容">＋</button>
           <textarea rows={1} aria-label="继续提问" placeholder="继续提问…" />
           <button className="composer-send" type="submit" aria-label="发送">↑</button>
         </div>
         <p>演示界面 · 当前回答来自图片复刻场景</p>
-      </form>
+      </form> : null}
     </section>
   </main>;
 }
