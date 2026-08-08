@@ -28,6 +28,7 @@ function makeScene(id: string, titleOrder: number): RecreationScene {
 function makePagedScene(): RecreationScene {
   return {
     ...makeScene("paged-video", 1),
+    prompt: "这段问题不应该出现在录屏模式",
     width: 900,
     height: 1600,
     pages: [{ id: "one", title: "One" }, { id: "two", title: "Two" }],
@@ -85,9 +86,16 @@ describe("RecreationStage playback controls", () => {
     act(() => { vi.advanceTimersByTime(0); });
   }
 
-  it("marks paged scenes as contained video viewports", () => {
+  it("renders paged scenes as a true 1080x1920 recording frame without chat chrome", () => {
     const { container } = render(<RecreationStage scene={makePagedScene()} />);
-    expect(container.querySelector(".answer-canvas-viewport.is-paged-video")).toBeInTheDocument();
+    const viewport = container.querySelector<HTMLElement>(".answer-canvas-viewport.is-paged-video.is-recording-frame");
+    expect(viewport).toBeInTheDocument();
+    expect(viewport).toHaveAttribute("data-recording-resolution", "1080x1920");
+    expect(viewport?.style.width).toBe("1080px");
+    expect(viewport?.style.height).toBe("1920px");
+    expect(screen.queryByText("这段问题不应该出现在录屏模式")).not.toBeInTheDocument();
+    expect(screen.queryByRole("form", { name: "模拟聊天输入框" })).not.toBeInTheDocument();
+    expect(container.querySelector(".conversation-topbar")).toBeNull();
   });
 
   it("makes final snapshot rendering ready before the playback timeline completes", async () => {
