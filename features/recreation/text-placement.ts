@@ -31,9 +31,8 @@ export function resolveTextPlacement(element: RecreationText, paper: RecreationP
 export function characterTransform(elementId: string, index: number, amount = 1): string | undefined {
   if (amount <= 0) return undefined;
   const random = createSeededRandom(seedFromString(`${elementId}:${index}`));
-  const x = seededRange(random, -0.22, 0.22) * amount;
-  const y = seededRange(random, -0.52, 0.52) * amount;
-  const rotate = seededRange(random, -0.42, 0.42) * amount;
-  const scaleX = 1 + seededRange(random, -0.012, 0.012) * amount;
-  return `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) rotate(${rotate.toFixed(2)}deg) scaleX(${scaleX.toFixed(3)})`;
+  const x = seededRange(random, -0.16, 0.16) * amount;
+  const y = seededRange(random, -0.28, 0.28) * amount;
+  const rotate = seededRange(random, -0.22, 0.22) * amount;
+  return `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) rotate(${rotate.toFixed(2)}deg)`;
 }
