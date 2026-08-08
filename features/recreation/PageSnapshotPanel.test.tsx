@@ -46,7 +46,7 @@ describe("PageSnapshotPanel", () => {
     expect(toPng).toHaveBeenCalledTimes(2);
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(fetch).toHaveBeenCalledWith("/api/recreation/snapshots", expect.objectContaining({ method: "POST" }));
-    const request = (fetch as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as RequestInit;
+    const request = vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit;
     expect(String(request.body)).toContain('"revision":"2+paper-text-v2"');
 
     fireEvent.click(screen.getByRole("button", { name: "已保存 2 张" }));
