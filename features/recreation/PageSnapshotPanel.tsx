@@ -91,7 +91,7 @@ export function PageSnapshotPanel({ scene, ready }: { scene: RecreationScene; re
           const dataUrl = await withTimeout(toPng(paper, {
             cacheBust: true,
             pixelRatio: 1,
-            backgroundColor: scene.paper.background === "transparent" ? "#fbf7ed" : scene.paper.background,
+            backgroundColor: scene.paper.background === "transparent" ? "#f5efe2" : scene.paper.background,
           }), 15000, `第 ${index + 1} 页截图超时`);
           result.push({ pageId: page.id, title: page.title, dataUrl });
           if (!cancelled) setGenerationProgress({ completed: index + 1, total: pages.length });
@@ -159,7 +159,7 @@ export function PageSnapshotPanel({ scene, ready }: { scene: RecreationScene; re
         ? "截图失败，重试"
         : state === "ready"
           ? savedDirectory ? `已保存 ${snapshots.length} 张` : `最终截图 ${snapshots.length}`
-          : "首轮结束后截图";
+          : "场景加载后截图";
   const disabled = !ready || state === "idle" || state === "generating" || state === "saving";
 
   return <>
@@ -178,7 +178,7 @@ export function PageSnapshotPanel({ scene, ready }: { scene: RecreationScene; re
         <header>
           <div>
             <strong>每页最终截图</strong>
-            <span>{snapshots.length} 页 · 每次首轮完成都会覆盖旧版本</span>
+            <span>{snapshots.length} 页 · 场景加载后直接生成，版本变化时覆盖旧截图</span>
             {savedDirectory ? <code>{savedDirectory}</code> : null}
             {saveWarning ? <em>已生成图片，但自动保存失败：{saveWarning}</em> : null}
           </div>
