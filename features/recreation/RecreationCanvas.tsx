@@ -23,7 +23,9 @@ interface AnnotationAnchor { x: number; y: number; width: number; height: number
 const CJK_HANDWRITING_STACK = '"Kaiti SC", "STKaiti", "KaiTi", "DFKai-SB", "AnswerCanvasHandwriting", cursive';
 
 function classForUnit(unit: string) {
-  return /[A-Za-z0-9]/u.test(unit) ? "recreation-char latin-handwritten" : "recreation-char";
+  if (/[0-9]/u.test(unit)) return "recreation-char numeric-handwritten";
+  if (/[A-Za-z]/u.test(unit)) return "recreation-char latin-handwritten";
+  return "recreation-char";
 }
 
 function containsCjk(value: string) {
